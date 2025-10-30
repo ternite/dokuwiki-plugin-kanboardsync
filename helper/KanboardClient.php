@@ -5,12 +5,14 @@ class KanboardClient
     private string $url;
     private string $username;
     private string $token;
+    private string $ssl_verifypeer;
 
-    public function __construct(string $url, string $username, string $token)
+    public function __construct(string $url, string $username, string $token, bool $ssl_verifypeer = true)
     {
         $this->url = $url;
         $this->username = $username;
         $this->token = $token;
+        $this->ssl_verifypeer = $ssl_verifypeer;
     }
 
     /**
@@ -32,13 +34,14 @@ class KanboardClient
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_CUSTOMREQUEST  => 'POST',
             CURLOPT_POSTFIELDS     => $json,
+            CURLOPT_SSL_VERIFYPEER => $this->ssl_verifypeer,
             CURLOPT_HTTPHEADER     => [
                 'Content-Type: application/json',
                 'Content-Length: ' . strlen($json)
             ],
             CURLOPT_USERPWD => "{$this->username}:{$this->token}"
         ]);
-
+        
         $response = curl_exec($ch);
 
         if ($response === false) {
@@ -54,7 +57,7 @@ class KanboardClient
         if (isset($decoded->error)) {
             throw new Exception("Kanboard-API-Fehler: " . json_encode($decoded->error));
         }
-
+        
         return $decoded->result ?? null;
     }
 

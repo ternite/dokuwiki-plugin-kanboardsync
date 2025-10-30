@@ -10,3 +10,4 @@ $lang['kanboard_user']      = "Kanboard User, der für die RPC calls verwendet w
 $lang['kanboard_token']     = "API Token aus Kanboard. Zu finden in Kanboard->Settings->API.";
 $lang['project_id']         = "ID des zu verwendenden Projekts";
 $lang['tasktag']            = "Schlüsselwort für den Tag, der Wikiseiten als Aufgaben kennzeichnet, die mit Kanboard zu synchronisieren sind.";
+$lang['ssl_verifypeer']     = "Prüft beim Aufbauen der Verbindung das SSL-Zertifikat des Kanboards.";

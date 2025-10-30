@@ -51,7 +51,7 @@ class action_plugin_kanboardsync extends ActionPlugin {
         // Hilfsplugin laden und ausführen
         $helper = plugin_load('helper', 'kanboardsync');
         if ($helper) {
-            //$helper->syncTasks();
+            $helper->syncTasks();
             msg('Kanboard Sync erfolgreich ausgeführt', 1);
         } else {
             msg('KanboardSync Helper konnte nicht geladen werden', -1);

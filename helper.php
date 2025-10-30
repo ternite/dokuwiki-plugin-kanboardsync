@@ -18,7 +18,8 @@ class helper_plugin_kanboardsync extends Plugin {
         $this->kanboard = new KanboardClient(
             $this->getConf('kanboard_url'),
             $this->getConf('kanboard_user'),
-            $this->getConf('kanboard_token')
+            $this->getConf('kanboard_token'),
+            $this->getConf('ssl_verifypeer')
         );
     }
 
@@ -27,30 +28,37 @@ class helper_plugin_kanboardsync extends Plugin {
      */
     public function syncTasks() {
         global $conf;
-        $tag = $this->getConf('tag');
+        $tag = $this->getConf('tasktag');
 
         // Nutze das Tag Plugin API, um alle Seiten mit Tag "todo" zu finden
         /** @var helper_plugin_tag $tagHelper */
-        /*$tagHelper = plugin_load('helper', 'tag');
+        $tagHelper = plugin_load('helper', 'tag');
+        $moHelper = plugin_load('helper', 'mo');
         if (!$tagHelper) return;
 
-        $pages = $tagHelper->getTopicList($tag);
-        foreach ($pages as $id => $title) {
-            $pageContent = rawWiki($id);
-
-            // einfache Titel/Referenzbildung
-            $reference = "wiki:$id";
-
-            $existing = $this->kanboard->getTaskByReference($this->getConf('project_id'), $reference);
-
-            if (is_null($existing)) {
+        // Hole alle Wikiseiten mit dem Tag, der in der Konfiguration via 'tasktag' definiert ist
+        $pages = $tagHelper->getTopic('',999,$tag);
+        
+        foreach ($pages as $id => $page) {
+            //msg("<b>id</b>:<br>".$page['id']);
+            
+            $quickcode = $moHelper->getQuickcode($page['id']);
+            $kanboard_reference = "Quickcode: $quickcode";
+            
+            //msg("<b>kanboard_reference</b>:<br>".$kanboard_reference);
+                        
+            $task = $this->kanboard->getTaskByReference($this->getConf('project_id'), $kanboard_reference);
+            
+            if (is_null($task)) {
                 $this->kanboard->createTask([
                     'title' => $title,
                     'project_id' => $this->getConf('project_id'),
-                    'reference' => $reference
+                    'kanboard_reference' => $kanboard_reference
                 ]);
                 msg("Neuer Task erstellt für $id", 1);
+            } else {
+                msg("Aufgabe '$task->reference' existiert bereits: $task->title.");
             }
-        }*/
+        }
     }
 }
