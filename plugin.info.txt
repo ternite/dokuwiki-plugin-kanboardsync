@@ -1,0 +1,7 @@
+base   kanboardsync
+author Thomas Schäfer
+email  thomas@hilbershome.de
+date   2025-10-29
+name   Kanboard Sync
+desc   Synchronizes Dokuwiki pages tagged as tasks with a Kanboard.
+url    https://www.dokuwiki.org/plugin:kanboardsync
