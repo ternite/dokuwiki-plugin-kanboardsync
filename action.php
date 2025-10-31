@@ -58,6 +58,6 @@ class action_plugin_kanboardsync extends ActionPlugin {
         }
 
         // Optionale Ausgabe
-        echo '<div class="dokuwiki">Kanboard-Synchronisierung abgeschlossen.</div>';
+        //echo '<div class="dokuwiki">Kanboard-Synchronisierung abgeschlossen.</div>';
     }
 }

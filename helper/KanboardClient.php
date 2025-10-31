@@ -77,6 +77,13 @@ class KanboardClient
         ]);
     }
 
+    public function getUserByName(string $username)
+    {
+        return $this->call('getUserByName', [
+            'username' => $username
+        ]);
+    }
+
     public function createTask(array $params)
     {
         return $this->call('createTask', $params);
