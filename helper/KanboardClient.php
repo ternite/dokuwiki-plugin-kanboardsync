@@ -89,6 +89,10 @@ class KanboardClient
         return $this->call('createTask', $params);
     }
 
+    public function dateToString(DateTime $dateTime) {
+        return $dateTime->format('Y-m-d H:i');
+    }
+        
     // Weitere Methoden kannst du leicht ergänzen:
     // public function getTask($taskId) { return $this->call('getTask', ['task_id' => $taskId]); }
     // public function updateTask($taskId, array $fields) { ... }

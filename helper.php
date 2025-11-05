@@ -38,10 +38,6 @@ class helper_plugin_kanboardsync extends Plugin {
         // Hole alle Wikiseiten mit dem Tag, der in der Konfiguration via 'tasktag' definiert ist
         
         $tag = $this->getConf('tasktag');
-        $cycle = "";
-        $date_due_if_new = new DateTime();
-        $date_due_if_new->modify('+90 days');
-        $date_due_if_new = $date_due_if_new->format('Y-m-d H:i');
         
         $pages_cyclic_quarterly = $tagHelper->getTopic('',999,"$tag +Zyklus_vierteljährlich");
         
@@ -55,37 +51,55 @@ class helper_plugin_kanboardsync extends Plugin {
                         
             $task = $this->kanboard->getTaskByReference($this->getConf('project_id'), $kanboard_reference);
             
+            // only create a new task if there is none, yet
             if (is_null($task)) {                
-                // extract person or role responsible for that kind of task 
-                $verantwortlicher = $this->getVerantwortlichePerson($page['id']);
+            
                 
-                if (!$verantwortlicher) {
-                    $verantwortlicheRolle = $this->getVerantwortlicheRolle($page['id']);
-                    if ($verantwortlicheRolle) {
-                        $verantwortlicher = $this->getRollenverantwortlicher($verantwortlicheRolle);
-                    } else {
-                        msg("Kein Verantwortlicher gefunden.",2);
-                    }
-                }
+                $periodicityString = $this->getPeriodicityFromWikipage($page['id']);
+                require_once(__DIR__ . '/helper/Periodicity.php');
+                $periodicity = new Periodicity(explode(',',$periodicityString,3));
                 
-                if ($verantwortlicher) {
-                    $kanboard_user = $this->kanboard->getUserByName($verantwortlicher);
-                                        
-                    $task_id = $this->kanboard->createTask([
-                        'title' => $page['title'],
-                        'project_id' => $this->getConf('project_id'),
-                        'owner_id' => $kanboard_user->id,
-                        'reference' => $kanboard_reference,
-                        'date_due' => $date_due_if_new
-                    ]);
-                    if ($task_id) {
-                        msg("Neuer Task erstellt für <b>$id</b> mit der Kanboard Task ID: $task_id - Verantwortlich: $kanboard_user->name ($kanboard_user->username)", 0);
-                    } else {
-                        msg("Erzeugung eines Tasks ist fehlgeschlagen.".date('YYYY-MM-DD HH:MM',$date_due_if_new) ,2);
+                // only create a new task if the task prototype has a defined periodicity!
+                if ($periodicity->Type && $periodicity->Cycle) {
+                    
+                    // extract person or role responsible for that kind of task 
+                    $verantwortlicher = $this->getVerantwortlichePersonFromWikipage($page['id']);
+                    
+                    if (!$verantwortlicher) {
+                        $verantwortlicheRolle = $this->getVerantwortlicheRolleFromWikipage($page['id']);
+                        if ($verantwortlicheRolle) {
+                            $verantwortlicher = $this->getRollenverantwortlicherFromWikipage($verantwortlicheRolle);
+                        }
                     }
+                    
+                    if ($verantwortlicher) {
+                        $kanboard_user = $this->kanboard->getUserByName($verantwortlicher);
+                        
+                        
+                        
+                        $date_due = $periodicity->getNewDueDate(new DateTime());
+                        
+                        $task_id = $this->kanboard->createTask([
+                            'title' => $page['title'],
+                            'project_id' => $this->getConf('project_id'),
+                            'owner_id' => $kanboard_user->id,
+                            'reference' => $kanboard_reference,
+                            'date_due' => $this->kanboard->dateToString($date_due)
+                        ]);
+                        
+                        if ($task_id) {
+                            msg("Neuer Task erstellt für <b>$id</b> mit der Kanboard Task ID: $task_id - Verantwortlich: $kanboard_user->name ($kanboard_user->username) - Fälligkeit: ".$date_due->format('d.m.Y'));
+                        } else {
+                            msg("Erzeugung eines Tasks ist fehlgeschlagen." ,2);
+                        }
+                    } else {
+                        msg("Kein Task angelegt, da kein Verantwortlicher gefunden.",2);
+                    }
+                } else {
+                    msg("Kein Task angelegt, da keine Periodizität festgestellt werden konnte.",2);
                 }
             } else {
-                msg("Aufgabe '$task->reference' existiert bereits: <b>$task->title</b> mit der Kanboard Task ID: <b>$task->id</b>.");
+                msg("Task '$task->reference' existiert bereits: <b>$task->title</b> mit der Kanboard Task ID: <b>$task->id</b>.");
             }
         }
     }
@@ -93,7 +107,7 @@ class helper_plugin_kanboardsync extends Plugin {
     /**
      * Ermittelt Verantwortliche Person einer Wikiseite.
      */
-    public function getVerantwortlichePerson(string $pageid) {
+    public function getVerantwortlichePersonFromWikipage(string $pageid) {
         $pageContent = rawWiki($pageid);
         
         // test for syntax in Task pages
@@ -110,7 +124,7 @@ class helper_plugin_kanboardsync extends Plugin {
     /**
      * Ermittelt Verantwortliche Rolle einer Wikiseite.
      */
-    public function getVerantwortlicheRolle(string $pageid) {
+    public function getVerantwortlicheRolleFromWikipage(string $pageid) {
         $pageContent = rawWiki($pageid);
         
         if (preg_match('/\^ *Verantwortlich: *\| *\[\[:*'.$this->getConf('namespace_roles').':([^|\]]+)/i', $pageContent, $matches)) {
@@ -123,11 +137,24 @@ class helper_plugin_kanboardsync extends Plugin {
     /**
      * Ermittelt Verantwortliche Person einer Rolle.
      */
-    public function getRollenverantwortlicher(string $rolename) {
+    public function getRollenverantwortlicherFromWikipage(string $rolename) {
         $pageid = $this->getConf('namespace_roles').':'.$rolename;
         
         $pageContent = rawWiki($pageid);
         
-        return $this->getVerantwortlichePerson($pageid);
+        return $this->getVerantwortlichePersonFromWikipage($pageid);
+    }
+    
+    /**
+     * Ermittelt Verantwortliche Rolle einer Wikiseite.
+     */
+    public function getPeriodicityFromWikipage(string $pageid) {
+        $pageContent = rawWiki($pageid);
+        
+        if (preg_match('/\{\{DOCUMENTTYPE\>AUFGABE:(.*)\}\}/i', $pageContent, $matches)) {
+            return $matches[1];
+        } else {
+            return NULL;
+        }
     }
 }
