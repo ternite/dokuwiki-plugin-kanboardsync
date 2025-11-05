@@ -57,7 +57,7 @@ class helper_plugin_kanboardsync extends Plugin {
                 
                 $periodicityString = $this->getPeriodicityFromWikipage($page['id']);
                 require_once(__DIR__ . '/helper/Periodicity.php');
-                $periodicity = new Periodicity(explode(',',$periodicityString,3));
+                $periodicity = new Periodicity(new DateTime(),explode(',',$periodicityString));
                 
                 // only create a new task if the task prototype has a defined periodicity!
                 if ($periodicity->Type && $periodicity->Cycle) {
@@ -75,22 +75,25 @@ class helper_plugin_kanboardsync extends Plugin {
                     if ($verantwortlicher) {
                         $kanboard_user = $this->kanboard->getUserByName($verantwortlicher);
                         
+                        if ($periodicity->isReadyForCreation()) {
                         
-                        
-                        $date_due = $periodicity->getNewDueDate(new DateTime());
-                        
-                        $task_id = $this->kanboard->createTask([
-                            'title' => $page['title'],
-                            'project_id' => $this->getConf('project_id'),
-                            'owner_id' => $kanboard_user->id,
-                            'reference' => $kanboard_reference,
-                            'date_due' => $this->kanboard->dateToString($date_due)
-                        ]);
-                        
-                        if ($task_id) {
-                            msg("Neuer Task erstellt für <b>$id</b> mit der Kanboard Task ID: $task_id - Verantwortlich: $kanboard_user->name ($kanboard_user->username) - Fälligkeit: ".$date_due->format('d.m.Y'));
+                            $date_due = $periodicity->getDueDate();
+                            
+                            $task_id = $this->kanboard->createTask([
+                                'title' => $page['title'],
+                                'project_id' => $this->getConf('project_id'),
+                                'owner_id' => $kanboard_user->id,
+                                'reference' => $kanboard_reference,
+                                'date_due' => $this->kanboard->dateToString($date_due)
+                            ]);
+                            
+                            if ($task_id) {
+                                msg("Neuer Task erstellt für <b>$id</b> mit der Kanboard Task ID: $task_id - Verantwortlich: $kanboard_user->name ($kanboard_user->username) - Fälligkeit: ".$date_due->format('d.m.Y'));
+                            } else {
+                                msg("Erzeugung eines Tasks ist fehlgeschlagen." ,2);
+                            }
                         } else {
-                            msg("Erzeugung eines Tasks ist fehlgeschlagen." ,2);
+                            msg("Kein Task angelegt, da die Vorlaufzeit ($periodicity->LoiteringTime Tage) noch nicht erreicht ist. Vorlaufdatum: ".$periodicity->getLoiteringDate()->format("d.m.Y")." Fälligkeitsdatum: ".$periodicity->getDueDate()->format("d.m.Y"),2);
                         }
                     } else {
                         msg("Kein Task angelegt, da kein Verantwortlicher gefunden.",2);
