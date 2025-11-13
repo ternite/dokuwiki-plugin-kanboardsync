@@ -12,7 +12,7 @@ class Periodicity
      * Konstruktor 1: Nimmt ein Array
      * Beispiel: new Periodicity(['A', 'vierteljährlich', '+2 Tage'])
      */
-    public function __construct(DateTime $referenceDate, array|string $input) {
+    public function __construct(array|string $input, ?DateTime $referenceDate = null) {
         $this->referenceDate = $referenceDate;
         if (is_null($referenceDate)) {
             $this->referenceDate = new DateTime();
@@ -21,7 +21,7 @@ class Periodicity
         if (is_array($input)) {
             $this->setMembersFromArray($input);
         } elseif (is_string($input)) {
-            $parts = explode(',',$input);
+            $parts = preg_split('/(,|;|:|\|)/', $input);
             $this->setMembersFromArray($parts);
         } else {
             throw new InvalidArgumentException('Periodicity expects array or string.');
@@ -41,10 +41,11 @@ class Periodicity
      * 
      */
     public function getDueDate(): ?DateTime {
+        $dueDate = $this->referenceDate;
         
         switch ($this->Cycle) {
             case 'täglich':
-                // TODO: Code für tägliche Wiederholung
+                $dueDate = $this->referenceDate;
                 break;
 
             case 'wöchentlich':
@@ -113,11 +114,23 @@ class Periodicity
         $dueDate = $this->getDueDate($this->referenceDate);
         $loiteringDate = $this->getLoiteringDate($this->referenceDate);
         
-        msg("LoiteringTime: ".$this->LoiteringTime." --- referenceDate: ".$this->referenceDate->format('d.m.Y')." --- dueDate: ".$dueDate->format('d.m.Y')." --- LoiteringDate: ".$loiteringDate->format('d.m.Y'),2);
+        //msg("LoiteringTime: ".$this->LoiteringTime." --- referenceDate: ".$this->referenceDate->format('d.m.Y h:m:s')." --- dueDate: ".$dueDate->format('d.m.Y h:m:s')." --- LoiteringDate: ".$loiteringDate->format('d.m.Y h:m:s'));
         if ($loiteringDate <= $this->referenceDate && $this->referenceDate <= $dueDate) {
             return true;
         } else {
             return false;
         }
+    }
+
+    public function getHTMLRepresentation(): string {
+        $result = $this->Cycle." ".$this->Type;
+
+        if ($this->Cycle != "täglich") {
+            $result .= "<br/>fällig am: " . $this->getDueDate()->format('d.m.Y');
+            //$result .= "<br/>Vorlaufzeit: " . $this->getLoiteringDate()->format('d.m.Y') . " Tage";
+            $result .= '<br/><abbr title="Zahl der Tage vor dem Fälligkeitsdatum, an dem eine Aufgabe erstellt werden soll">Vorlaufzeit</abbr>: ' . $this->LoiteringTime . ' Tage';
+        }
+
+        return $result;
     }
 }

@@ -7,6 +7,8 @@ class KanboardClient
     private string $token;
     private string $ssl_verifypeer;
 
+    private string $jsonrpc_php = "jsonrpc.php";
+
     public function __construct(string $url, string $username, string $token, bool $ssl_verifypeer = true)
     {
         $this->url = $url;
@@ -29,7 +31,7 @@ class KanboardClient
 
         $json = json_encode($data);
 
-        $ch = curl_init($this->url);
+        $ch = curl_init($this->url.'/'.rtrim($this->jsonrpc_php, '/'));
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_CUSTOMREQUEST  => 'POST',

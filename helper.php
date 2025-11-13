@@ -39,17 +39,14 @@ class helper_plugin_kanboardsync extends Plugin {
         
         $tag = $this->getConf('tasktag');
         
-        $pages_cyclic_quarterly = $tagHelper->getTopic('',999,"$tag +Zyklus_vierteljährlich");
+        $taskPages = $tagHelper->getTopic('',999,"$tag");
         
-        foreach ($pages_cyclic_quarterly as $id => $page) {
-            //msg("<b>id</b>:<br>".$page['id']);
+        foreach ($taskPages as $id => $page) {
+            //msg("<b>id</b>:<br>".$page['id'],2);
             
             $quickcode = $moHelper->getQuickcode($page['id']);
-            $kanboard_reference = "Quickcode: $quickcode";
-            
-            //msg("<b>kanboard_reference</b>:<br>".$kanboard_reference);
                         
-            $task = $this->kanboard->getTaskByReference($this->getConf('project_id'), $kanboard_reference);
+            $task = $this->getTaskByQuickcode($quickcode);
             
             // only create a new task if there is none, yet
             if (is_null($task)) {                
@@ -57,7 +54,7 @@ class helper_plugin_kanboardsync extends Plugin {
                 
                 $periodicityString = $this->getPeriodicityFromWikipage($page['id']);
                 require_once(__DIR__ . '/helper/Periodicity.php');
-                $periodicity = new Periodicity(new DateTime(),explode(',',$periodicityString));
+                $periodicity = new Periodicity($periodicityString);
                 
                 // only create a new task if the task prototype has a defined periodicity!
                 if ($periodicity->Type && $periodicity->Cycle) {
@@ -75,25 +72,29 @@ class helper_plugin_kanboardsync extends Plugin {
                     if ($verantwortlicher) {
                         $kanboard_user = $this->kanboard->getUserByName($verantwortlicher);
                         
-                        if ($periodicity->isReadyForCreation()) {
-                        
-                            $date_due = $periodicity->getDueDate();
+                        if ($kanboard_user) {
+                            if ($periodicity->isReadyForCreation()) {
                             
-                            $task_id = $this->kanboard->createTask([
-                                'title' => $page['title'],
-                                'project_id' => $this->getConf('project_id'),
-                                'owner_id' => $kanboard_user->id,
-                                'reference' => $kanboard_reference,
-                                'date_due' => $this->kanboard->dateToString($date_due)
-                            ]);
-                            
-                            if ($task_id) {
-                                msg("Neuer Task erstellt für <b>$id</b> mit der Kanboard Task ID: $task_id - Verantwortlich: $kanboard_user->name ($kanboard_user->username) - Fälligkeit: ".$date_due->format('d.m.Y'));
+                                $date_due = $periodicity->getDueDate();
+                                
+                                $task_id = $this->kanboard->createTask([
+                                    'title' => $page['title'],
+                                    'project_id' => $this->getConf('project_id'),
+                                    'owner_id' => $kanboard_user->id,
+                                    'reference' => $kanboard_reference,
+                                    'date_due' => $this->kanboard->dateToString($date_due)
+                                ]);
+                                
+                                if ($task_id) {
+                                    msg("Neuer Task erstellt für <b>$id</b> mit der Kanboard Task ID: $task_id - Verantwortlich: $kanboard_user->name ($kanboard_user->username) - Fälligkeit: ".$date_due->format('d.m.Y'),1);
+                                } else {
+                                    msg("Erzeugung eines Tasks ist fehlgeschlagen." ,2);
+                                }
                             } else {
-                                msg("Erzeugung eines Tasks ist fehlgeschlagen." ,2);
+                                msg("Keinen Task <b>".$page['title']."</b> (Quickcode: $quickcode) angelegt, da die Vorlaufzeit ($periodicity->LoiteringTime Tage) noch nicht erreicht ist. Vorlaufdatum: ".$periodicity->getLoiteringDate()->format("d.m.Y")." Fälligkeitsdatum: ".$periodicity->getDueDate()->format("d.m.Y"));
                             }
                         } else {
-                            msg("Kein Task angelegt, da die Vorlaufzeit ($periodicity->LoiteringTime Tage) noch nicht erreicht ist. Vorlaufdatum: ".$periodicity->getLoiteringDate()->format("d.m.Y")." Fälligkeitsdatum: ".$periodicity->getDueDate()->format("d.m.Y"),2);
+                            msg("Der User <b>$verantwortlicher</b> konnte im Kanboard nicht gefunden werden.");
                         }
                     } else {
                         msg("Kein Task angelegt, da kein Verantwortlicher gefunden.",2);
@@ -107,10 +108,15 @@ class helper_plugin_kanboardsync extends Plugin {
         }
     }
     
+    public function getTaskByQuickcode(string $quickcode) {
+        $kanboard_reference = "Quickcode: $quickcode";
+        return $this->kanboard->getTaskByReference($this->getConf('project_id'), $kanboard_reference);
+    }
+
     /**
      * Ermittelt Verantwortliche Person einer Wikiseite.
      */
-    public function getVerantwortlichePersonFromWikipage(string $pageid) {
+    public function getVerantwortlichePersonFromWikipage(string $pageid) : ?string {
         $pageContent = rawWiki($pageid);
         
         // test for syntax in Task pages
@@ -119,6 +125,15 @@ class helper_plugin_kanboardsync extends Plugin {
         } else //test for syntax in Role pages
             if (preg_match('/\^ *Inhaber der Rolle:* *\| *\[\[:*'.$this->getConf('namespace_persons').':([^|\]]+)/i', $pageContent, $matches)) {
             return $matches[1];
+        } else //test for syntax in Role pages beginning with 'MFA' -> in that case set generic role MFA
+            if (preg_match('/\^ *Inhaber der Rolle:* *\| *MFA *.*\|/i', $pageContent, $matches)) {
+                if ($matches[0]) {
+                    
+                    return "mfa";
+                } else {
+                    return NULL;
+                }
+                    
         } else {
             return NULL;
         }
@@ -127,7 +142,7 @@ class helper_plugin_kanboardsync extends Plugin {
     /**
      * Ermittelt Verantwortliche Rolle einer Wikiseite.
      */
-    public function getVerantwortlicheRolleFromWikipage(string $pageid) {
+    public function getVerantwortlicheRolleFromWikipage(string $pageid) : ?string {
         $pageContent = rawWiki($pageid);
         
         if (preg_match('/\^ *Verantwortlich: *\| *\[\[:*'.$this->getConf('namespace_roles').':([^|\]]+)/i', $pageContent, $matches)) {
@@ -140,7 +155,7 @@ class helper_plugin_kanboardsync extends Plugin {
     /**
      * Ermittelt Verantwortliche Person einer Rolle.
      */
-    public function getRollenverantwortlicherFromWikipage(string $rolename) {
+    public function getRollenverantwortlicherFromWikipage(string $rolename) : ?string {
         $pageid = $this->getConf('namespace_roles').':'.$rolename;
         
         $pageContent = rawWiki($pageid);
@@ -151,13 +166,23 @@ class helper_plugin_kanboardsync extends Plugin {
     /**
      * Ermittelt Verantwortliche Rolle einer Wikiseite.
      */
-    public function getPeriodicityFromWikipage(string $pageid) {
+    public function getPeriodicityFromWikipage(string $pageid) : ?string {
         $pageContent = rawWiki($pageid);
         
         if (preg_match('/\{\{DOCUMENTTYPE\>AUFGABE:(.*)\}\}/i', $pageContent, $matches)) {
             return $matches[1];
         } else {
             return NULL;
+        }
+    }
+
+    public function getKanboardUrlFromTask($task): ?string {
+        
+        if (is_null($task)) {
+            return null;
+        } else {
+            $kanboard_url = rtrim($this->getConf('kanboard_url'), '/');
+            return $kanboard_url . '/task/' . $task->id;
         }
     }
 }
