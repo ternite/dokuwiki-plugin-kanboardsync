@@ -13,17 +13,16 @@ use dokuwiki\Extension\Event;
 class action_plugin_kanboardsync extends ActionPlugin {
     /** @inheritDoc */
     public function register(EventHandler $controller) {
-
         $controller->register_hook('ACTION_ACT_PREPROCESS', 'BEFORE', $this, 'allowMyAction');
-      $controller->register_hook('TPL_ACT_UNKNOWN', 'BEFORE',  $this, 'handle_sync');
+        $controller->register_hook('TPL_ACT_UNKNOWN', 'BEFORE',  $this, 'handle_sync');
     }
     
     /**
-     * Ensure the action is recognized to avoid the message "Failed to handle action: sync_kanboard"
+     * Ensure the action is recognized to avoid the message "Failed to handle action: kanboard_sync"
      * see implementation hints from: https://www.dokuwiki.org/devel:event:tpl_act_unknown
      */
     public function allowMyAction(Doku_Event $event, $param) {
-        if($event->data != 'sync_kanboard') return; 
+        if($event->data != 'kanboard_sync' && $event->data != 'kanboard_create_task') return; 
         $event->preventDefault();
     }
   
@@ -38,26 +37,42 @@ class action_plugin_kanboardsync extends ActionPlugin {
     public function handle_sync(Event $event, $param) {
         global $INPUT;
 
-        // Prüfe, ob die Action die unsere ist
-        if ($INPUT->str('do') !== 'sync_kanboard') {
+        // Hilfsplugin laden und ausführen
+        $kanboard_helper = plugin_load('helper', 'kanboardsync');
+        
+        if (is_null($kanboard_helper)) {
+            msg('KanboardSync Helper konnte nicht geladen werden', -1);
             return;
         }
-        $event->preventDefault();
-        $event->stopPropagation();
-        
-        
-        //$event->data = 'show';
 
-        // Hilfsplugin laden und ausführen
-        $helper = plugin_load('helper', 'kanboardsync');
-        if ($helper) {
-            $helper->syncTasks();
-            msg('Kanboard Sync erfolgreich ausgeführt', 1);
-        } else {
-            msg('KanboardSync Helper konnte nicht geladen werden', -1);
+        // Prüfe, ob die Action die unsere ist
+        switch ($INPUT->str('do')) {
+            case 'kanboard_sync':
+                $event->preventDefault();
+                $event->stopPropagation();
+                
+                $kanboard_helper->syncTasks();
+                break;
+            case 'kanboard_create_task':
+                $event->preventDefault();
+                $event->stopPropagation();
+                
+                $pageid = $INPUT->str('pageid');
+
+                if (strlen($pageid) > 0) {
+                    $pageTitle = p_get_metadata($pageid)['title'];
+                    $taskid = $kanboard_helper->createTask($pageid, $pageTitle, true);
+                    
+                    if (is_null($taskid)) {
+                        msg('Kanboard Task "'.$pageTitle.'" konnte nicht angelegt werden.');
+                    } else {
+                        msg("Kanboard Task mit ID $taskid angelegt.", 1);
+                    }
+                }
+
+            default:
+                return;
         }
-
-        // Optionale Ausgabe
-        //echo '<div class="dokuwiki">Kanboard-Synchronisierung abgeschlossen.</div>';
+        
     }
 }
