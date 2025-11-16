@@ -152,6 +152,8 @@ class helper_plugin_kanboardsync extends Plugin {
         require_once(__DIR__ . '/helper/Periodicity.php');
         $periodicity = new Periodicity($periodicityString);
 
+        $wikipage_anchor = "<a href='" . DOKU_URL . "doku.php?id=$pageid'>Wiki-Seite</a>";
+
         // only create a new task if there is none, yet
         if (sizeof($tasks) == 0) {
             
@@ -176,21 +178,17 @@ class helper_plugin_kanboardsync extends Plugin {
                         
                             $date_due = $periodicity->getDueDate();
                             
-                            $task_id = $this->kanboard->createTask([
-                                'title' => $pagetitle,
-                                'project_id' => $this->getConf('project_id'),
-                                'owner_id' => $kanboard_user->id,
-                                'reference' => $kanboard_reference,
-                                'date_due' => $this->kanboard->dateToString($date_due)
-                            ]);
+                            $task_id = $this->kanboard->createTask($pagetitle,$this->getConf('project_id'),$kanboard_user->id,$kanboard_reference,$this->kanboard->dateToString($date_due));
                             
                             if ($task_id) {
-                                msg("Neuer Task erstellt für <b>$pagetitle</b> mit der Kanboard Task ID: $task_id - Verantwortlich: $kanboard_user->name ($kanboard_user->username) - Fälligkeit: " . $date_due->format('d.m.Y') . " PageID=$pageid",1);
+                                
+                                $kanboard_task_anchor = "<a href='".$this->getKanboardUrlFromTaskID($task_id)."'>Kanboard Task</a>";
+                                msg("Neuer Task erstellt für <b>$pagetitle</b> mit der Kanboard Task ID: $task_id - Verantwortlich: $kanboard_user->name ($kanboard_user->username) - Fälligkeit: " . $date_due->format('d.m.Y') . " PageID=$pageid [$wikipage_anchor | $kanboard_task_anchor]",1);
                             } else {
                                 msg("Erzeugung eines Tasks ist fehlgeschlagen." ,2);
                             }
                         } else {
-                            msg("Keinen Task <b>".$pagetitle."</b> (Quickcode: $quickcode) angelegt, da die Vorlaufzeit ($periodicity->LoiteringTime Tage) noch nicht erreicht ist. Vorlaufdatum: " . $periodicity->getLoiteringDate()->format("d.m.Y")." Fälligkeitsdatum: ".$periodicity->getDueDate()->format("d.m.Y"));
+                            msg("Keinen Task <b>".$pagetitle."</b> (Quickcode: $quickcode) angelegt, da die Vorlaufzeit ($periodicity->LoiteringTime Tage) noch nicht erreicht ist. Vorlaufdatum: " . $periodicity->getLoiteringDate()->format("d.m.Y")." Fälligkeitsdatum: ".$periodicity->getDueDate()->format("d.m.Y")." [$wikipage_anchor]");
                         return null;
                         }
                     } else {
@@ -207,7 +205,9 @@ class helper_plugin_kanboardsync extends Plugin {
             }
         } else {
             $lastTask = $tasks[sizeof($tasks)-1];
-            msg("Task '$lastTask->reference' existiert bereits (".($lastTask->is_active == 0 ? "erledigt" : "offen")."): <b>$lastTask->title</b> mit der Kanboard Task ID: <b>$lastTask->id</b>.");
+            $kanboard_task_anchor = "<a href='".$this->getKanboardUrlFromTask($lastTask)."'>Kanboard Task</a>";
+
+            msg("Task '$lastTask->reference' existiert bereits (".($lastTask->is_active == 0 ? "erledigt" : "offen")."): <b>$lastTask->title</b> mit der Kanboard Task ID: <b>$lastTask->id</b>. [$wikipage_anchor | $kanboard_task_anchor]");
             return null;
         }
 
@@ -215,10 +215,8 @@ class helper_plugin_kanboardsync extends Plugin {
     }
 
     public function closeTask(string $taskid): bool {
-        $success = $this->kanboard->closeTask([
-            'task_id' => $taskid
-        ]);
-        
+        $success = $this->kanboard->closeTask($taskid);
+
         return $success;
     }
 
@@ -228,8 +226,17 @@ class helper_plugin_kanboardsync extends Plugin {
         if (is_null($task)) {
             return null;
         } else {
+            return $this->getKanboardUrlFromTaskID($task->id);
+        }
+    }
+
+    public function getKanboardUrlFromTaskID($taskid): ?string {
+        
+        if ($taskid > 0) {
             $kanboard_url = rtrim($this->getConf('kanboard_url'), '/');
-            return $kanboard_url . '/task/' . $task->id;
+            return $kanboard_url . '/task/' . $taskid;
+        } else {
+            return null;
         }
     }
 }

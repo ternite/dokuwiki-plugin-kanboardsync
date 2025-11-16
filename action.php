@@ -98,6 +98,7 @@ class action_plugin_kanboardsync extends ActionPlugin {
                         //msg("Kanboard Task mit ID $taskid angelegt.", 1);
                     }
                 }
+                break;
             case 'kanboard_close_task':
                 //$event->preventDefault();
                 
@@ -112,6 +113,7 @@ class action_plugin_kanboardsync extends ActionPlugin {
                         msg('Kanboard Task mit ID "'.$taskid.'" konnte nicht auf erledigt gesetzt werden.');
                     }
                 }
+                break;
 
             default:
                 return;

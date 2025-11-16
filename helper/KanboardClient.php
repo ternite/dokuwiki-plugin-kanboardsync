@@ -9,8 +9,7 @@ class KanboardClient
 
     private string $jsonrpc_php = "jsonrpc.php";
 
-    public function __construct(string $url, string $username, string $token, bool $ssl_verifypeer = true)
-    {
+    public function __construct(string $url, string $username, string $token, bool $ssl_verifypeer = true) {
         $this->url = $url;
         $this->username = $username;
         $this->token = $token;
@@ -20,8 +19,7 @@ class KanboardClient
     /**
      * Zentrale Methode, um JSON-RPC Calls auszuführen
      */
-    private function call(string $method, array $params = [], $id = null)
-    {
+    private function call(string $method, array $params = [], $id = null) {
         $data = [
             'jsonrpc' => '2.0',
             'method'  => $method,
@@ -66,13 +64,11 @@ class KanboardClient
     /**
      * Beispielmethoden für häufige API-Aufrufe
      */
-    public function getAllProjects()
-    {
+    public function getAllProjects() {
         return $this->call('getAllProjects');
     }
 
-    public function getActiveTaskByReference(int $projectId, string $reference)
-    {
+    public function getActiveTaskByReference(int $projectId, string $reference) {
         $activeTasks =  $this->call('getAllTasks', [
             'project_id' => $projectId,
             'status_id'  => 1
@@ -91,38 +87,43 @@ class KanboardClient
      * @param string $reference
      * @return array Ein Array von Task-Objekten - gibt es keine, dann ein leeres Array zurück
      */
-    public function getTaskWithUnreachedDueDateByReference(int $projectId, string $reference)
-    {
-        $tasks =  $this->call('searchTasks', [
+    public function getTaskWithUnreachedDueDateByReference(int $projectId, string $reference) {
+        $params = [
             'project_id' => $projectId,
             'query'  => "due:>=today reference:$reference"
-        ]);
+        ];
+        $tasks =  $this->call('searchTasks', $params);
 
         return $tasks;
     }
     
-    public function getUserByName(string $username)
-    {
-        return $this->call('getUserByName', [
+    public function getUserByName(string $username) {
+        $params = [
             'username' => $username
-        ]);
+        ];
+        return $this->call('getUserByName', $params);
     }
 
-    public function createTask(array $params)
-    {
+    public function createTask(string $pagetitle, int $project_id, int $owner_id, string $kanboard_reference, string $date_due) {
+        $params = [
+            'title' => $pagetitle,
+            'project_id' => $project_id,
+            'owner_id' => $owner_id,
+            'reference' => $kanboard_reference,
+            'date_due' => $date_due
+        ];
+
         return $this->call('createTask', $params);
     }
     
-    public function closeTask(array $params)
-    {
+    public function closeTask(string $taskid) {
+        $params = [
+            'task_id' => $taskid
+        ];
         return $this->call('closeTask', $params);
     }
 
     public function dateToString(DateTime $dateTime) {
         return $dateTime->format('Y-m-d H:i');
     }
-        
-    // Weitere Methoden kannst du leicht ergänzen:
-    // public function getTask($taskId) { return $this->call('getTask', ['task_id' => $taskId]); }
-    // public function updateTask($taskId, array $fields) { ... }
 }
