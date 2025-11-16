@@ -12,6 +12,7 @@ use dokuwiki\Extension\Plugin;
 class helper_plugin_kanboardsync extends Plugin {
 
     private $kanboard;
+    private string $reference_prefix = "Quickcode-";
 
     public function __construct() {
         require_once(__DIR__ . '/helper/KanboardClient.php');
@@ -27,7 +28,6 @@ class helper_plugin_kanboardsync extends Plugin {
      * Synchronisiert alle mit dem definierten Tag markierten Seiten mit Kanboard
      */
     public function syncTasks() {
-        global $conf;
 
         // Nutze das Tag Plugin API, um alle Seiten mit Tag "todo" zu finden
         /** @var helper_plugin_tag $tagHelper */
@@ -43,17 +43,29 @@ class helper_plugin_kanboardsync extends Plugin {
         
         foreach ($taskPages as $id => $page) {
             
-            $this->createTask($page['id'], $page['title'], false);
+            $this->createTaskIfNecessary($page['id'], $page['title'], false);
         }
     }
     
-    public function getTaskByQuickcode(string $quickcode) {
-        $kanboard_reference = "Quickcode: $quickcode";
-        return $this->kanboard->getTaskByReference($this->getConf('project_id'), $kanboard_reference);
+    public function getActiveTaskByQuickcode(string $quickcode) {
+        $kanboard_reference = $this->reference_prefix.$quickcode;
+        return $this->kanboard->getActiveTaskByReference($this->getConf('project_id'), $kanboard_reference);
+    }
+
+    /**
+     * Holt alle Tasks mit unerreichtem Fälligkeitsdatum anhand des Quickcodes
+     *  @param string $quickcode Der Quickcode der Wikiseite
+     *  @return array Ein Array von Task-Objekten - gibt es keine, dann ein leeres Array zurück
+     */
+    public function getTasksWithUnreachedDueDateByQuickcode(string $quickcode) {
+        $kanboard_reference = $this->reference_prefix.$quickcode;
+        return $this->kanboard->getTaskWithUnreachedDueDateByReference($this->getConf('project_id'), $kanboard_reference);
     }
 
     /**
      * Ermittelt Verantwortliche Person einer Wikiseite.
+     * @param string $pageid Die ID der Wikiseite
+     * @return string|null Der Benutzername der verantwortlichen Person oder null, wenn keine gefunden wurde
      */
     public function getVerantwortlichePersonFromWikipage(string $pageid) : ?string {
         $pageContent = rawWiki($pageid);
@@ -80,6 +92,8 @@ class helper_plugin_kanboardsync extends Plugin {
     
     /**
      * Ermittelt Verantwortliche Rolle einer Wikiseite.
+     * @param string $pageid Die ID der Wikiseite
+     * @return string|null Der Name der verantwortlichen Rolle oder null, wenn keine gefunden wurde
      */
     public function getVerantwortlicheRolleFromWikipage(string $pageid) : ?string {
         $pageContent = rawWiki($pageid);
@@ -93,6 +107,8 @@ class helper_plugin_kanboardsync extends Plugin {
     
     /**
      * Ermittelt Verantwortliche Person einer Rolle.
+     * @param string $rolename Der Name der Rolle
+     * @return string|null Der Benutzername der verantwortlichen Person oder null, wenn keine gefunden wurde
      */
     public function getRollenverantwortlicherFromWikipage(string $rolename) : ?string {
         $pageid = $this->getConf('namespace_roles').':'.$rolename;
@@ -104,6 +120,8 @@ class helper_plugin_kanboardsync extends Plugin {
     
     /**
      * Ermittelt Verantwortliche Rolle einer Wikiseite.
+     * @param string $pageid Die ID der Wikiseite
+     * @return string|null Die Periodizität als String oder null, wenn keine gefunden wurde
      */
     public function getPeriodicityFromWikipage(string $pageid) : ?string {
         $pageContent = rawWiki($pageid);
@@ -122,21 +140,20 @@ class helper_plugin_kanboardsync extends Plugin {
      * 
      * @return string|null Die ID des erstellten Tasks oder null, wenn kein Task erstellt wurde.
      */
-    public function createTask(string $pageid, string $pagetitle, ?bool $ignoreLoiteringTime = false): ?string {
+    public function createTaskIfNecessary(string $pageid, string $pagetitle, ?bool $ignoreLoiteringTime = false): ?string {
         $moHelper = plugin_load('helper', 'mo');
         $quickcode = $moHelper->getQuickcode($pageid);
-        $kanboard_reference = "Quickcode: $quickcode";
+        $kanboard_reference = $this->reference_prefix.$quickcode;
         
         $task_id = null;
-        $task = $this->getTaskByQuickcode($quickcode);
-        
+        $tasks = $this->getTasksWithUnreachedDueDateByQuickcode($quickcode);
+                
+        $periodicityString = $this->getPeriodicityFromWikipage($pageid);
+        require_once(__DIR__ . '/helper/Periodicity.php');
+        $periodicity = new Periodicity($periodicityString);
+
         // only create a new task if there is none, yet
-        if (is_null($task)) {                
-        
-            
-            $periodicityString = $this->getPeriodicityFromWikipage($pageid);
-            require_once(__DIR__ . '/helper/Periodicity.php');
-            $periodicity = new Periodicity($periodicityString);
+        if (sizeof($tasks) == 0) {
             
             // only create a new task if the task prototype has a defined periodicity!
             if ($periodicity->Type && $periodicity->Cycle) {
@@ -168,12 +185,12 @@ class helper_plugin_kanboardsync extends Plugin {
                             ]);
                             
                             if ($task_id) {
-                                msg("Neuer Task erstellt für <b>$pageid</b> mit der Kanboard Task ID: $task_id - Verantwortlich: $kanboard_user->name ($kanboard_user->username) - Fälligkeit: ".$date_due->format('d.m.Y'),1);
+                                msg("Neuer Task erstellt für <b>$pagetitle</b> mit der Kanboard Task ID: $task_id - Verantwortlich: $kanboard_user->name ($kanboard_user->username) - Fälligkeit: " . $date_due->format('d.m.Y') . " PageID=$pageid",1);
                             } else {
                                 msg("Erzeugung eines Tasks ist fehlgeschlagen." ,2);
                             }
                         } else {
-                            msg("Keinen Task <b>".$pagetitle."</b> (Quickcode: $quickcode) angelegt, da die Vorlaufzeit ($periodicity->LoiteringTime Tage) noch nicht erreicht ist. Vorlaufdatum: ".$periodicity->getLoiteringDate()->format("d.m.Y")." Fälligkeitsdatum: ".$periodicity->getDueDate()->format("d.m.Y"));
+                            msg("Keinen Task <b>".$pagetitle."</b> (Quickcode: $quickcode) angelegt, da die Vorlaufzeit ($periodicity->LoiteringTime Tage) noch nicht erreicht ist. Vorlaufdatum: " . $periodicity->getLoiteringDate()->format("d.m.Y")." Fälligkeitsdatum: ".$periodicity->getDueDate()->format("d.m.Y"));
                         return null;
                         }
                     } else {
@@ -189,12 +206,22 @@ class helper_plugin_kanboardsync extends Plugin {
                 return null;
             }
         } else {
-            msg("Task '$task->reference' existiert bereits: <b>$task->title</b> mit der Kanboard Task ID: <b>$task->id</b>.");
+            $lastTask = $tasks[sizeof($tasks)-1];
+            msg("Task '$lastTask->reference' existiert bereits (".($lastTask->is_active == 0 ? "erledigt" : "offen")."): <b>$lastTask->title</b> mit der Kanboard Task ID: <b>$lastTask->id</b>.");
             return null;
         }
 
         return $task_id;
     }
+
+    public function closeTask(string $taskid): bool {
+        $success = $this->kanboard->closeTask([
+            'task_id' => $taskid
+        ]);
+        
+        return $success;
+    }
+
 
     public function getKanboardUrlFromTask($task): ?string {
         

@@ -71,14 +71,36 @@ class KanboardClient
         return $this->call('getAllProjects');
     }
 
-    public function getTaskByReference(int $projectId, string $reference)
+    public function getActiveTaskByReference(int $projectId, string $reference)
     {
-        return $this->call('getTaskByReference', [
+        $activeTasks =  $this->call('getAllTasks', [
             'project_id' => $projectId,
-            'reference'  => $reference
+            'status_id'  => 1
         ]);
+
+        foreach ($activeTasks as $task) {
+            if ($task->reference === $reference) {
+                return $task;
+            }
+        }
     }
 
+    /**
+     * Holt von Kanboard alle Tasks, deren Fälligkeitsdatum heute ist oder in der Zukunft liegt.
+     * @param int $projectId
+     * @param string $reference
+     * @return array Ein Array von Task-Objekten - gibt es keine, dann ein leeres Array zurück
+     */
+    public function getTaskWithUnreachedDueDateByReference(int $projectId, string $reference)
+    {
+        $tasks =  $this->call('searchTasks', [
+            'project_id' => $projectId,
+            'query'  => "due:>=today reference:$reference"
+        ]);
+
+        return $tasks;
+    }
+    
     public function getUserByName(string $username)
     {
         return $this->call('getUserByName', [
@@ -89,6 +111,11 @@ class KanboardClient
     public function createTask(array $params)
     {
         return $this->call('createTask', $params);
+    }
+    
+    public function closeTask(array $params)
+    {
+        return $this->call('closeTask', $params);
     }
 
     public function dateToString(DateTime $dateTime) {
