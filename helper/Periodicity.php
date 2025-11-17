@@ -123,12 +123,12 @@ class Periodicity
     }
 
     public function getHTMLRepresentation(): string {
-        $result = $this->Cycle." ".$this->Type;
+        $result = "<div>Diese Aufgabe ist $this->Cycle $this->Type";
 
         if ($this->Cycle != "täglich") {
-            $result .= "<br/>fällig am: " . $this->getDueDate()->format('d.m.Y');
+            $result .= " und das nächste Mal fällig am:<br><b>" . $this->getDueDate()->format('d.m.Y') . "</b><hr></div>";
             //$result .= "<br/>Vorlaufzeit: " . $this->getLoiteringDate()->format('d.m.Y') . " Tage";
-            $result .= '<br/><abbr title="Zahl der Tage vor dem Fälligkeitsdatum, an dem eine Aufgabe erstellt werden soll">Vorlaufzeit</abbr>: ' . $this->LoiteringTime . ' Tage';
+            $result .= "<div>Im Kanboard wird mit einer <abbr title='Zahl der Tage vor dem Fälligkeitsdatum, an dem eine Aufgabe erstellt werden soll'>Vorlaufzeit</abbr> von <b>$this->LoiteringTime Tagen</b> automatisch ein Task angelegt und der verantwortlichen Person zugeordnet.</div>";
         }
 
         return $result;
