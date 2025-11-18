@@ -129,6 +129,8 @@ class Periodicity
             $result .= " und das nächste Mal fällig am:<br><b>" . $this->getDueDate()->format('d.m.Y') . "</b><hr></div>";
             //$result .= "<br/>Vorlaufzeit: " . $this->getLoiteringDate()->format('d.m.Y') . " Tage";
             $result .= "<div>Im Kanboard wird mit einer <abbr title='Zahl der Tage vor dem Fälligkeitsdatum, an dem eine Aufgabe erstellt werden soll'>Vorlaufzeit</abbr> von <b>$this->LoiteringTime Tagen</b> automatisch ein Task angelegt und der verantwortlichen Person zugeordnet.</div>";
+        } else {
+            $result .= "</div>";
         }
 
         return $result;
