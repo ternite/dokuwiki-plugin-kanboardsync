@@ -140,79 +140,39 @@ class helper_plugin_kanboardsync extends Plugin {
      * 
      * @return string|null Die ID des erstellten Tasks oder null, wenn kein Task erstellt wurde.
      */
-    public function createTaskIfNecessary(string $pageid, string $pagetitle, ?bool $ignoreLoiteringTime = false): ?string {
-        $moHelper = plugin_load('helper', 'mo');
-        $quickcode = $moHelper->getQuickcode($pageid);
-        $kanboard_reference = $this->reference_prefix.$quickcode;
-        
-        $task_id = null;
-        $tasks = $this->getTasksWithUnreachedDueDateByQuickcode($quickcode);
-                
-        $periodicityString = $this->getPeriodicityFromWikipage($pageid);
-        require_once(__DIR__ . '/helper/Periodicity.php');
-        $periodicity = new Periodicity($periodicityString);
+    public function createTaskIfNecessary(string $pageid, string $pagetitle, bool $ignoreLoitering = false): ?string {
+    
+    require_once(__DIR__ . '/helper/KanboardTask.php');
 
-        $wikipage_anchor = "<a href='" . DOKU_URL . "doku.php?id=$pageid'>Wiki-Seite</a>";
+    $task = new KanboardTask(
+        $this->kanboard,
+        $this->getConf('project_id'),
+        $this->reference_prefix,
+        $pageid,
+        $pagetitle
+    );
 
-        // only create a new task if there is none, yet
-        if (sizeof($tasks) == 0) {
-            
-            // only create a new task if the task prototype has a defined periodicity!
-            if ($periodicity->Type && $periodicity->Cycle) {
-                
-                // extract person or role responsible for that kind of task 
-                $verantwortlicher = $this->getVerantwortlichePersonFromWikipage($pageid);
-                
-                if (!$verantwortlicher) {
-                    $verantwortlicheRolle = $this->getVerantwortlicheRolleFromWikipage($pageid);
-                    if ($verantwortlicheRolle) {
-                        $verantwortlicher = $this->getRollenverantwortlicherFromWikipage($verantwortlicheRolle);
-                    }
-                }
-                
-                if ($verantwortlicher) {
-                    $kanboard_user = $this->kanboard->getUserByName($verantwortlicher);
-                    
-                    if ($kanboard_user) {
-                        if ($periodicity->isReadyForCreation() || $ignoreLoiteringTime) {
-                        
-                            $date_due = $periodicity->getDueDate();
-                            
-                            $task_id = $this->kanboard->createTask($pagetitle,$this->getConf('project_id'),$kanboard_user->id,$kanboard_reference,$this->kanboard->dateToString($date_due));
-                            
-                            if ($task_id) {
-                                
-                                $kanboard_task_anchor = "<a href='".$this->getKanboardUrlFromTaskID($task_id)."'>Kanboard Task</a>";
-                                msg("Neuer Task erstellt für <b>$pagetitle</b> mit der Kanboard Task ID: $task_id - Verantwortlich: $kanboard_user->name ($kanboard_user->username) - Fälligkeit: " . $date_due->format('d.m.Y') . " PageID=$pageid [$wikipage_anchor | $kanboard_task_anchor]",1);
-                            } else {
-                                msg("Erzeugung eines Tasks ist fehlgeschlagen." ,2);
-                            }
-                        } else {
-                            msg("Keinen Task <b>".$pagetitle."</b> (Quickcode: $quickcode) angelegt, da die Vorlaufzeit ($periodicity->LoiteringTime Tage) noch nicht erreicht ist. Vorlaufdatum: " . $periodicity->getLoiteringDate()->format("d.m.Y")." Fälligkeitsdatum: ".$periodicity->getDueDate()->format("d.m.Y")." [$wikipage_anchor]");
-                        return null;
-                        }
-                    } else {
-                        msg("Der User <b>$verantwortlicher</b> konnte im Kanboard nicht gefunden werden.");
-                        return null;
-                    }
-                } else {
-                    msg("Kein Task angelegt, da kein Verantwortlicher gefunden.",2);
-                    return null;
-                }
-            } else {
-                msg("Kein Task angelegt, da keine Periodizität festgestellt werden konnte.",2);
-                return null;
-            }
-        } else {
-            $lastTask = $tasks[sizeof($tasks)-1];
-            $kanboard_task_anchor = "<a href='".$this->getKanboardUrlFromTask($lastTask)."'>Kanboard Task</a>";
+    // Model mit Loader-Closures initialisieren
+    $task->loadFromWiki(
+        fn($id) => plugin_load('helper', 'mo')->getQuickcode($id),
+        fn($id) => $this->getVerantwortlichePersonFromWikipage($id),
+        fn($id) => $this->getVerantwortlicheRolleFromWikipage($id),
+        fn($id) => $this->getPeriodicityFromWikipage($id)
+    );
 
-            msg("Task '$lastTask->reference' existiert bereits (".($lastTask->is_active == 0 ? "erledigt" : "offen")."): <b>$lastTask->title</b> mit der Kanboard Task ID: <b>$lastTask->id</b>. [$wikipage_anchor | $kanboard_task_anchor]");
-            return null;
-        }
-
-        return $task_id;
+    if ($task->hasExistingTask()) {
+        msg("Task existiert bereits – kein neuer Task erzeugt.");
+        return null;
     }
+
+    $taskId = $task->create($ignoreLoitering);
+
+    if ($taskId) {
+        msg("Neuer Task $taskId für '$pagetitle' erzeugt.", 1);
+    }
+
+    return $taskId;
+}
 
     public function closeTask(string $taskid): bool {
         $success = $this->kanboard->closeTask($taskid);
