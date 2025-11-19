@@ -9,8 +9,11 @@ class Periodicity
     public ?string $LoiteringTime;  // Anzahl Tage vor dem DueDate, ab wann der Task angelegt werden soll
 
     /**
-     * Konstruktor 1: Nimmt ein Array
-     * Beispiel: new Periodicity(['A', 'vierteljährlich', '+2 Tage'])
+     * Konstruktor 1: Nimmt ein Array oder einen String
+     * @param array|string $input Array oder String mit Periodizitätsangaben
+     * Beispiel 1: new Periodicity(['wiederkehrend', 'vierteljährlich', '85', '7'])
+     * Beispiel 2: new Periodicity('wiederkehrend,vierteljährlich,85,7')
+     * 
      */
     public function __construct(array|string $input, ?DateTime $referenceDate = null) {
         $this->referenceDate = $referenceDate;
@@ -21,13 +24,17 @@ class Periodicity
         if (is_array($input)) {
             $this->setMembersFromArray($input);
         } elseif (is_string($input)) {
-            $parts = preg_split('/(,|;|:|\|)/', $input);
+            $parts = preg_split('/(,|;)/', $input);
             $this->setMembersFromArray($parts);
         } else {
             throw new InvalidArgumentException('Periodicity expects array or string.');
         }
     }
 
+    /**
+     * Setzt die Member-Variablen aus einem Array.
+     * @param array $input
+     */
     private function setMembersFromArray(array $input) {
         if (is_array($input)) {
             $this->Type          = $input[0] ?? null;
@@ -38,9 +45,9 @@ class Periodicity
     }
     
     /**
-     * 
+     * Ermittelt ein Fälligkeitsdatum basierend auf der Periodizität. Das beim Anlegen des Periodicity-Objekts angegebene Referenzdatum wird für die Fälligkeit als Ausgangspunkt verwendet.
      */
-    public function getDueDate(): ?DateTime {
+    public function getNextDueDate(): ?DateTime {
         $dueDate = $this->referenceDate;
         
         switch ($this->Cycle) {
@@ -53,7 +60,15 @@ class Periodicity
                 break;
 
             case 'monatlich':
-                // TODO: Code für monatliche Wiederholung
+                $dueDate = $this->getMonatsbeginn();
+                
+                // add Offset to date
+                $dueDate->modify("+$this->Offset days");
+
+                //if the reference date is already past this month plus offset, move to next month
+                if ($dueDate <= $this->referenceDate) {
+                    $dueDate->modify("+1 month");
+                }
                 break;
 
             case 'vierteljährlich':
@@ -64,6 +79,10 @@ class Periodicity
                 $dueDate->modify("+$this->Offset days");
 
             case 'jährlich':
+                // TODO: Code für jährliche Wiederholung
+                break;
+
+            case 'zweijährlich':
                 // TODO: Code für jährliche Wiederholung
                 break;
 
@@ -101,20 +120,34 @@ class Periodicity
 
         return $quarterStart;
     }
+
+    public function getMonatsbeginn(): DateTime {
+        $dateTime = $this->referenceDate;
+
+        // Monat als Zahl (1–12)
+        $month = (int)$dateTime->format('n');
+
+        // Neues DateTime-Objekt für den Monatsbeginn
+        $monthStart = new DateTime(
+            sprintf('%d-%02d-01 00:00:00', $dateTime->format('Y'), $month)
+        );
+
+        return $monthStart;
+    }
     
     public function getLoiteringDate(): ?DateTime {
-        $dueDate = $this->getDueDate($this->referenceDate);
+        $dueDate = $this->getNextDueDate($this->referenceDate);
         if (is_null($this->LoiteringTime)) {
             $loiteringDate = new DateTime("01.01.1970");
         } else {
-            $loiteringDate = $dueDate->modify("-$this->LoiteringTime days");
+            $loiteringDate = $dueDate->modify("-" . $this->LoiteringTime + 1 . " days");
         }
         
         return $loiteringDate;
     }
     
     public function isReadyForCreation(): bool {
-        $dueDate = $this->getDueDate($this->referenceDate);
+        $dueDate = $this->getNextDueDate($this->referenceDate);
         $loiteringDate = $this->getLoiteringDate($this->referenceDate);
         
         //msg("LoiteringTime: ".$this->LoiteringTime." --- referenceDate: ".$this->referenceDate->format('d.m.Y h:m:s')." --- dueDate: ".$dueDate->format('d.m.Y h:m:s')." --- LoiteringDate: ".$loiteringDate->format('d.m.Y h:m:s'));
@@ -123,19 +156,5 @@ class Periodicity
         } else {
             return false;
         }
-    }
-
-    public function getHTMLRepresentation(): string {
-        $result = "<div>Diese Aufgabe ist $this->Cycle $this->Type";
-
-        if ($this->Cycle != "täglich") {
-            $result .= " und das nächste Mal fällig am:<br><b>" . $this->getDueDate()->format('d.m.Y') . "</b><hr></div>";
-            //$result .= "<br/>Vorlaufzeit: " . $this->getLoiteringDate()->format('d.m.Y') . " Tage";
-            $result .= "<div>Im Kanboard wird mit einer <abbr title='Zahl der Tage vor dem Fälligkeitsdatum, an dem eine Aufgabe erstellt werden soll'>Vorlaufzeit</abbr> von <b>$this->LoiteringTime Tagen</b> automatisch ein Task angelegt und der verantwortlichen Person zugeordnet.</div>";
-        } else {
-            $result .= "</div>";
-        }
-
-        return $result;
     }
 }

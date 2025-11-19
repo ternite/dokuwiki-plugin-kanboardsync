@@ -69,6 +69,18 @@ class KanboardTask
     public function getKanboardTask(): ?stdClass {
 
         if ($this->kanboardTask === null) {
+            // zuerst nach offenen Tasks suchen
+            $result = $this->kanboardClient->getOpenTasksByReference(
+                (int)$this->projectId,
+                $this->reference()
+            );
+
+            if (sizeof($result) > 0) {
+                $this->kanboardTask = $result[0];
+                return $this->kanboardTask;
+            }
+
+            // wenn keine offenen Tasks gefunden wurden, dann nach Tasks mit unerreichtem Fälligkeitsdatum suchen
             $result = $this->kanboardClient->getTaskWithUnreachedDueDateByReference(
                 (int)$this->projectId,
                 $this->reference()
@@ -76,6 +88,7 @@ class KanboardTask
 
             if (sizeof($result) > 0) {
                 $this->kanboardTask = $result[0];
+                return $this->kanboardTask;
             }
         }
 
@@ -106,11 +119,35 @@ class KanboardTask
         if (!$this->periodicity->isReadyForCreation() && !$ignoreLoitering) {
             
             $wikitaskurl = DOKU_URL . 'doku.php?id=' . $this->pageId;
-            msg("Vorlaufzeit noch nicht erreicht für <a href='$wikitaskurl'>$this->pageTitle</a> (" . $this->periodicity->Cycle . " mit " . $this->periodicity->LoiteringTime . " Tagen Vorlaufzeit).", 2);
+            $cycle = "Zyklus";
+            switch ($this->periodicity->Cycle) {
+                //case "täglich":
+                //    $cycle = "des Tages";
+                //    break;
+                case "wöchentlich":
+                    $cycle = "der Woche";
+                    break;
+                case "monatlich":
+                    $cycle = "des Monats";
+                    break;
+                case "vierteljährlich":
+                    $cycle = "des Quartals";
+                    break;
+                case "halbjährlich":
+                    $cycle = "des Halbjahres";
+                    break;
+                case "jährlich":
+                    $cycle = "des Jahres";
+                    break;
+                case "zweijährlich":
+                    $cycle = "der zwei Jahre";
+                    break;
+            }
+            msg("Vorlaufzeit noch nicht erreicht für <a href='$wikitaskurl'>$this->pageTitle</a> (" . $this->periodicity->Cycle . " mit " . $this->periodicity->LoiteringTime . " Tagen Vorlaufzeit zum " . $this->periodicity->Offset + 1 . ". Tag $cycle).", 2);
             return null;
         }
 
-        $due = $this->kanboardClient->dateToString($this->periodicity->getDueDate());
+        $due = $this->kanboardClient->dateToString($this->periodicity->getNextDueDate());
 
         $id = $this->kanboardClient->createTask(
             $this->pageTitle,

@@ -82,7 +82,7 @@ class KanboardClient
     }
 
     /**
-     * Holt von Kanboard alle Tasks, deren Fälligkeitsdatum heute ist oder in der Zukunft liegt.
+     * Holt von Kanboard alle Tasks zur übergebenen Reference, deren Fälligkeitsdatum heute ist oder in der Zukunft liegt.
      * @param int $projectId
      * @param string $reference
      * @return array Ein Array von Task-Objekten - gibt es keine, dann ein leeres Array zurück
@@ -91,6 +91,22 @@ class KanboardClient
         $params = [
             'project_id' => $projectId,
             'query'  => "due:>=today reference:$reference"
+        ];
+        $tasks =  $this->call('searchTasks', $params);
+
+        return $tasks;
+    }
+
+    /**
+     * Holt von Kanboard alle offenen Tasks zur übergebenen Reference.
+     * @param int $projectId
+     * @param string $reference
+     * @return array Ein Array von Task-Objekten - gibt es keine, dann ein leeres Array zurück
+     */
+    public function getOpenTasksByReference(int $projectId, string $reference) {
+        $params = [
+            'project_id' => $projectId,
+            'query'  => "status:open reference:$reference"
         ];
         $tasks =  $this->call('searchTasks', $params);
 

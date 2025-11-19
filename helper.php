@@ -67,7 +67,7 @@ class helper_plugin_kanboardsync extends Plugin {
             $kanboardtaskurl = $this->getKanboardUrlFromTaskID($kanboardTask->id);
             $wikitaskurl = DOKU_URL . 'doku.php?id=' . $pageid;
             $statusText = ($kanboardTask->is_active) ? "offen" : "erledigt";
-            msg("Ein offener oder zukünftiger Task für <a href='$wikitaskurl'>$pagetitle</a> (" . $statusText . ") existiert bereits (Task-ID $kanboardTask->id). <a href='$kanboardtaskurl'>Task im Kanboard öffnen</a>", 0);
+            msg("Ein  Task für <a href='$wikitaskurl'>$pagetitle</a> (" . $statusText . ") existiert bereits (Task-ID $kanboardTask->id). <a href='$kanboardtaskurl'>Task im Kanboard öffnen</a>", 0);
             return null;
         }
 
@@ -78,6 +78,8 @@ class helper_plugin_kanboardsync extends Plugin {
             $kanboardtaskurl = $this->getKanboardUrlFromTaskID($kanboardTask->id);
             $wikitaskurl = DOKU_URL . 'doku.php?id=' . $pageid;
             msg("Neuer Task für <a href='$wikitaskurl'>$pagetitle</a> erzeugt (Task-ID $kanboardTask->id). <a href='$kanboardtaskurl'>Task im Kanboard öffnen</a>", 1);
+            //expire the cache of the page
+            p_set_metadata($pageid, array('cache'=>'expire'),false,false);
         }
 
         return $kanboardTask;
@@ -117,5 +119,15 @@ class helper_plugin_kanboardsync extends Plugin {
     public function getTasksWithUnreachedDueDateByQuickcode(string $quickcode) {
         $kanboard_reference = $this->reference_prefix.$quickcode;
         return $this->kanboard->getTaskWithUnreachedDueDateByReference($this->getConf('project_id'), $kanboard_reference);
+    }
+
+    /**
+     * Holt alle offenen Tasks anhand des Quickcodes
+     *  @param string $quickcode Der Quickcode der Wikiseite
+     *  @return array Ein Array von Task-Objekten - gibt es keine, dann ein leeres Array zurück
+     */
+    public function getOpenTasksByQuickcode(string $quickcode) {
+        $kanboard_reference = $this->reference_prefix.$quickcode;
+        return $this->kanboard->getOpenTasksByReference($this->getConf('project_id'), $kanboard_reference);
     }
 }
