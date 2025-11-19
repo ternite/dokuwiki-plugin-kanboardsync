@@ -11,6 +11,4 @@ $conf['kanboard_token']    = ''; // needs to be set to die API key provided with
 $conf['project_id']        = 1;
 $conf['tasktag']           = "task";
 $conf['ssl_verifypeer']    = true;
-$conf['namespace_persons'] = '';
-$conf['namespace_roles']   = '';
 

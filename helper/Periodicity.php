@@ -72,6 +72,9 @@ class Periodicity
                 return null;
         }
 
+        //strip time portion
+        $dueDate->setTime(23, 59, 59);
+
         // Temporär einfach das Basisdatum zurückgeben
         return $dueDate;
     }
