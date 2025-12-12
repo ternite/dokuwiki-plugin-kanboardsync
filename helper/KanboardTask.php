@@ -1,16 +1,18 @@
 <?php
+declare(strict_types=1);
+
+require_once DOKU_PLUGIN . 'mo/classes/WikiTask.php';
+
 /**
  * Model-Klasse für eine Kanboard-Aufgabe, basierend auf einer Wikiseite
  */
 
-class KanboardTask
+class KanboardTask extends WikiTask
 {
     private KanboardClient $kanboardClient;
     private mixed $moPlugin;
     private string $projectId;
     private string $referencePrefix;
-    private string $pageId;
-    private string $pageTitle;
     private mixed $kanboardTask = null;
 
     private ?string $quickcode = null;
@@ -23,14 +25,14 @@ class KanboardTask
         string $projectId,
         string $referencePrefix,
         string $pageId,
-        string $pageTitle
+        ResponsibilityResolver $resolver
     ) {
+        parent::__construct($pageId, $resolver);
+
         $this->kanboardClient  = $kanboardClient;
         $this->moPlugin        = $moPlugin;
         $this->projectId       = $projectId;
         $this->referencePrefix = $referencePrefix;
-        $this->pageId          = $pageId;
-        $this->pageTitle       = $pageTitle;
 
         // -- Initialisiere Model aus der Wiki-Seite
         $this->loadFromWiki(
@@ -52,11 +54,13 @@ class KanboardTask
                                  callable $personLoader,
                                  callable $periodicityLoader): void {
 
-        $this->quickcode   = $quickcodeLoader($this->pageId);
-        $this->responsibleUser = $personLoader($this->pageId);
+        $this->quickcode   = $quickcodeLoader($this->getPageId());
+        $this->responsibleUser = $personLoader($this->getPageId());
 
-        $periodicityString = $periodicityLoader($this->pageId);
-        $this->periodicity = new Periodicity($periodicityString);
+        $periodicityString = $periodicityLoader($this->getPageId());
+        if (!is_null($periodicityString)) {
+            $this->periodicity = new Periodicity($periodicityString);
+        }
     }
 
     private function reference(): string {
@@ -101,12 +105,14 @@ class KanboardTask
     public function createKanboardTask(bool $ignoreLoitering = false): ?stdClass {
 
         if (!$this->periodicity->Type || !$this->periodicity->Cycle) {
-            msg("Keine Periodizität für {$this->pageTitle} gefunden.", 2);
+            $title = $this->getTitle() ?? $this->getPageId();
+            msg("Keine Periodizität für {$title} gefunden.", 2);
             return null;
         }
 
         if (!$this->responsibleUser) {
-            msg("Kein Verantwortlicher für '{$this->pageTitle}' gefunden.", 2);
+            $title = $this->getTitle() ?? $this->getPageId();
+            msg("Kein Verantwortlicher für '{$title}' gefunden.", 2);
             return null;
         }
 
@@ -118,7 +124,7 @@ class KanboardTask
 
         if (!$this->periodicity->isReadyForCreation() && !$ignoreLoitering) {
             
-            $wikitaskurl = DOKU_URL . 'doku.php?id=' . $this->pageId;
+            $wikitaskurl = DOKU_URL . 'doku.php?id=' . $this->getPageId();
             $cycle = "Zyklus";
             switch ($this->periodicity->Cycle) {
                 //case "täglich":
@@ -143,18 +149,28 @@ class KanboardTask
                     $cycle = "der zwei Jahre";
                     break;
             }
-            msg("Vorlaufzeit noch nicht erreicht für <a href='$wikitaskurl'>$this->pageTitle</a> (" . $this->periodicity->Cycle . " mit " . $this->periodicity->LoiteringTime . " Tagen Vorlaufzeit zum " . $this->periodicity->Offset + 1 . ". Tag $cycle).", 2);
+            $title = $this->getTitle() ?? $this->getPageId();
+            msg("Vorlaufzeit noch nicht erreicht für <a href='$wikitaskurl'>{$title}</a> (" . $this->periodicity->Cycle . " mit " . $this->periodicity->LoiteringTime . " Tagen Vorlaufzeit zum " . $this->periodicity->Offset + 1 . ". Tag $cycle).", 2);
             return null;
         }
 
         $due = $this->kanboardClient->dateToString($this->periodicity->getNextDueDate());
 
         $id = $this->kanboardClient->createTask(
-            $this->pageTitle,
+            $this->getTitle() ?? $this->getPageId(),
             (int)$this->projectId,
             (int)$user->id,
             $this->reference(),
             $due
+        );
+
+        // now add external link to wiki page
+        $this->kanboardClient->createExternalTaskLink(
+            strval($id),
+            DOKU_URL . 'doku.php?id=' . $this->getPageId(),
+            'Zugehörige Aufgabenbeschreibung im Praxiswiki',
+            type: "attachment",
+            title: "Aufgabe: " . $this->getTitle()
         );
 
         return $this->getKanboardTask();
@@ -173,7 +189,7 @@ class KanboardTask
     public function getPeriodicityFromWikipage(string $pageid): ?string {
         $pageContent = rawWiki($pageid);
 
-        if (preg_match('/\{\{DOCUMENTTYPE\>AUFGABE:(.*)\}\}/i', $pageContent, $m)) {
+        if (preg_match('/\{\{DOCUMENTTYPE\>AUFGABE[:|](.*)\}\}/i', $pageContent, $m)) {
             return trim($m[1]);
         }
 

@@ -131,6 +131,23 @@ class KanboardClient
 
         return $this->call('createTask', $params);
     }
+
+    public function createExternalTaskLink(string $task_id, string $url, string $dependency, ?string $type = null, ?string $title = null) {
+        $params = [
+            'task_id' => $task_id,
+            'url' => $url,
+            'dependency' => $dependency
+        ];
+
+        if (!is_null($type)) {
+            $params['type'] = $type;
+        }
+        if (!is_null($title)) {
+            $params['title'] = $title;
+        }
+
+        return $this->call('createExternalTaskLink', $params);
+    }
     
     public function closeTask(string $taskid) {
         $params = [

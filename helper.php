@@ -52,13 +52,15 @@ class helper_plugin_kanboardsync extends Plugin {
      */
     public function createTaskIfNecessary(string $pageid, string $pagetitle, bool $ignoreLoitering = false): ?stdClass {
 
+        $moHelper = plugin_load('helper','mo');
+
         $task = new KanboardTask(
             $this->kanboard,
             plugin_load('helper', 'mo'),
             $this->getConf('project_id'),
             $this->reference_prefix,
             $pageid,
-            $pagetitle
+            $moHelper->getResponsbilityResolver()
         );
 
         // -- Prüfe, ob es bereits einen Task gibt
@@ -83,6 +85,16 @@ class helper_plugin_kanboardsync extends Plugin {
         }
 
         return $kanboardTask;
+    }
+    
+    public function getKanboardTask(string $pageid): WikiTask {
+        
+        require_once DOKU_PLUGIN . 'mo/classes/ResponsibilityResolver.php';
+        require_once(__DIR__ . '/KanboardTask.php');
+
+        $mo_helper = $this->loadHelper('mo');
+
+        return new KanboardTask($pageid, $mo_helper->getResponsbilityResolver);
     }
 
 
