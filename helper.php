@@ -123,6 +123,14 @@ class helper_plugin_kanboardsync extends Plugin {
         return null;
     }
 
+    public function getKanboardUrlForUser($userid): ?string {
+        if ($taskid > 0) {
+            $base = rtrim($this->getConf('kanboard_url'), '/');
+            return "$base/?controller=TaskListController&action=show&plugin=&project_id=1&search=status%3Aopen+assignee%3A" . urlencode("\"$userid\"");
+        }
+        return null;
+    }
+
         /**
      * Holt alle Tasks mit unerreichtem Fälligkeitsdatum anhand des Quickcodes
      *  @param string $quickcode Der Quickcode der Wikiseite
@@ -135,11 +143,21 @@ class helper_plugin_kanboardsync extends Plugin {
 
     /**
      * Holt alle offenen Tasks anhand des Quickcodes
+     * 
      *  @param string $quickcode Der Quickcode der Wikiseite
      *  @return array Ein Array von Task-Objekten - gibt es keine, dann ein leeres Array zurück
      */
     public function getOpenTasksByQuickcode(string $quickcode) {
         $kanboard_reference = $this->reference_prefix.$quickcode;
         return $this->kanboard->getOpenTasksByReference($this->getConf('project_id'), $kanboard_reference);
+    }
+
+    /**
+     * Holt von Kanboard alle offenen Tasks für den übergebenen Bearbeiter.
+     * 
+     * @param string $assignee_userid Benutzer-ID des Bearbeiters (sollte in Dokuwiki und Kanboard übereinstimmen)
+     */
+    public function getOpenTasksByAssignee(string $assignee_userid) {
+        return $this->kanboard->getOpenTasksByAssignee($this->getConf('project_id'), $assignee_userid);
     }
 }

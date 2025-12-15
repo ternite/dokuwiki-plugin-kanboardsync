@@ -99,14 +99,31 @@ class KanboardClient
 
     /**
      * Holt von Kanboard alle offenen Tasks zur übergebenen Reference.
-     * @param int $projectId
-     * @param string $reference
+     * 
+     * @param int $projectId ID des Projekts
+     * @param string $reference inter-kanboard-dokuwiki reference
      * @return array Ein Array von Task-Objekten - gibt es keine, dann ein leeres Array zurück
      */
     public function getOpenTasksByReference(int $projectId, string $reference) {
         $params = [
             'project_id' => $projectId,
             'query'  => "status:open reference:$reference"
+        ];
+        $tasks =  $this->call('searchTasks', $params);
+
+        return $tasks;
+    }
+
+    /**
+     * Holt von Kanboard alle offenen Tasks für den übergebenen Bearbeiter.
+     * 
+     * @param int $projectId ID des Projekts
+     * @param string $assignee_userid Benutzer-ID des Bearbeiters (sollte in Dokuwiki und Kanboard übereinstimmen)
+     */
+    public function getOpenTasksByAssignee(int $projectId, string $assignee_userid) {
+        $params = [
+            'project_id' => $projectId,
+            'query'  => "status:open assignee:$assignee_userid"
         ];
         $tasks =  $this->call('searchTasks', $params);
 
