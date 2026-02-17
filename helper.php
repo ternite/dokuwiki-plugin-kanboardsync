@@ -160,4 +160,26 @@ class helper_plugin_kanboardsync extends Plugin {
     public function getOpenTasksByAssignee(string $assignee_userid) {
         return $this->kanboard->getOpenTasksByAssignee($this->getConf('project_id'), $assignee_userid);
     }
+
+    public function getDokuwikiPageIDFromTask(string $task_id) : string {
+        $allExternalTaskLinks = $this->kanboard->getAllExternalTaskLinks($task_id);
+        // for all external task links, find the one which is a dokuwiki link
+        $dokuwiki_ExternalLink = null;
+        foreach ($allExternalTaskLinks as $link) {
+            if (str_contains($link->url, DOKU_URL . 'doku.php?id=')) {
+                $dokuwiki_ExternalLink = $link->url;
+                break;
+            }
+        }
+        if ($dokuwiki_ExternalLink !== null) {
+            // extract page id from link
+            $parts = parse_url($dokuwiki_ExternalLink);
+            parse_str($parts['query'], $query);
+            if (isset($query['id'])) {
+                return $query['id'];
+            }
+        }
+        return "";
+    }
+
 }

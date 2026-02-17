@@ -165,6 +165,13 @@ class KanboardClient
 
         return $this->call('createExternalTaskLink', $params);
     }
+
+    public function getAllExternalTaskLinks(string $task_id) {
+        $params = [
+            'task_id' => $task_id
+        ];
+        return $this->call('getAllExternalTaskLinks', $params);
+    }
     
     public function closeTask(string $taskid) {
         $params = [

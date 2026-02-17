@@ -15,7 +15,7 @@ class Periodicity
      * Beispiel 2: new Periodicity('wiederkehrend,vierteljährlich,85,7')
      * 
      */
-    public function __construct(array|string $input, ?DateTime $referenceDate = null) {
+    public function __construct($input, ?DateTime $referenceDate = null) {
         $this->referenceDate = $referenceDate;
         if (is_null($referenceDate)) {
             $this->referenceDate = new DateTime();

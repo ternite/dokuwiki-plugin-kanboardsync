@@ -114,50 +114,50 @@ class syntax_plugin_kanboardsync extends DokuWiki_Syntax_Plugin {
         // get kanboard helper
         $kanboardsync_helper = $this->loadHelper('kanboardsync');
 
+        if (is_null($kanboardsync_helper)) {
+            $renderer->doc .= "<strong>Fehler:</strong> KanboardSync Helper konnte nicht geladen werden.";
+            return true;
+        }
+
+                // determine last part of article id (in case of namespaced articles)
+        $article_id_parts = explode(":", $article_id);
+        $pagename = end($article_id_parts);
+        $pagetitle = p_get_metadata($article_id)['title'];
+
         if ($mode == 'xhtml') {
+            
+            $open_tasks = $kanboardsync_helper->getOpenTasksByAssignee($pagename);
+            $cssclass = "urlextern";
+
+            //expire the page's xhtml cache to have the following code always have effect - it's presentation can depend on external factors so that the page should be updated, but a cached version would be delivered, instead. The following code can be used to achieve expiring the cache, according to: https://www.dokuwiki.org/devel:caching#plugins
+            p_set_metadata($article_id, array('cache'=>'expire'),false,false);
             
             if ($command == $this->kanboarduserlink) {
 
-                // determine last part of article id (in case of namespaced articles)
-                $article_id_parts = explode(":", $article_id);
-                $pagename = end($article_id_parts);
-
-                $open_tasks = $kanboardsync_helper->getOpenTasksByAssignee($pagename);
-
-                //expire the page's xhtml cache to have the following code always have effect - it's presentation can depend on external factors so that the page should be updated, but a cached version would be delivered, instead. The following code can be used to achieve expiring the cache, according to: https://www.dokuwiki.org/devel:caching#plugins
-                p_set_metadata($article_id, array('cache'=>'expire'),false,false);
-                
-                // param1: username / pagename
-                // param2: array of open tasks assigned to the user
-
-                $cssclass = "urlextern";
                 $kanboard_url = $this->getConf('kanboard_url');
-                $kanboard_user_tasks_url = $kanboard_url . "?controller=TaskListController&action=show&plugin=&project_id=1&search=status%3Aopen+assignee%3A%22".$pagename."%22";
+                $kanboard_user_tasks_url = $kanboard_url . "?controller=TaskListController&action=show&plugin=&project_id=".$this->getConf('project_id')."&search=status%3Aopen+assignee%3A%22".$pagename."%22";
                 $renderer->doc .= "<a class='".$cssclass."' href='".$kanboard_user_tasks_url."'>Offene Aufgaben im Kanboard</a> (".strval(sizeof($open_tasks)).")";
             } else if ($command == $this->kanboardusertasklist) {
 
-                // determine last part of article id (in case of namespaced articles)
-                $article_id_parts = explode(":", $article_id);
-                $pagename = end($article_id_parts);
-
-                $open_tasks = $kanboardsync_helper->getOpenTasksByAssignee($pagename);
-
-                //expire the page's xhtml cache to have the following code always have effect - it's presentation can depend on external factors so that the page should be updated, but a cached version would be delivered, instead. The following code can be used to achieve expiring the cache, according to: https://www.dokuwiki.org/devel:caching#plugins
-                p_set_metadata($article_id, array('cache'=>'expire'),false,false);
-                
-                // param1: username / pagename
-                // param2: array of open tasks assigned to the user
-
                 if (count($open_tasks) == 0) {
-                    $renderer->doc .= "<p>Es sind keine offenen Aufgaben im Kanboard für <strong>".$pagename."</strong> vorhanden.</p>";
+                    $renderer->doc .= "<p>Es sind keine offenen Aufgaben im Kanboard für <strong>".$pagetitle."</strong> vorhanden.</p>";
                 } else {
-                    $renderer->doc .= "<ul>";
+                    $renderer->doc .= "<table><tr><th>Aufgabe im Kanboard</th><th>Aufgabenbeschreibung</th></tr>";
                     foreach ($open_tasks as $task) {
+                        $renderer->doc .= "<tr>";
                         $kanboard_url = rtrim($this->getConf('kanboard_url'), '/');
                         $task_url = $kanboard_url . "/task/" . $task->id;
-                        $renderer->doc .= "<li><a class='urlextern' href='".$task_url."'>".$task->title."</a> (ID: ".$task->id.")</li>";
+                        $tasks_dokuwiki_pageid = $kanboardsync_helper->getDokuwikiPageIDFromTask($task->id);
+                        $internallink = "Nicht ermittelbar";
+                        // if $tasks_dokuwiki_pageid is not an empty string
+                        if (strlen($tasks_dokuwiki_pageid) > 0) {
+                            $internallink = $renderer->internallink($tasks_dokuwiki_pageid, null, null, true);
+                        }
+                        $renderer->doc .= "<td><a class='".$cssclass."' href='".$task_url."'>".$task->title."</a> (ID: ".$task->id.")</td>";
+                        $renderer->doc .= "<td>".$internallink."</td>";
+                        $renderer->doc .= "</tr>";
                     }
-                    $renderer->doc .= "</ul>";
+                    $renderer->doc .= "</table>";
                 }
             }
             return true;

@@ -5,7 +5,7 @@
  * @author Thomas Schäfer <thomas@hilbershome.de>
  */
 
-$lang['kanboard_url']       = "Kanboard address - the path should normally end with: /kanboard/jsonrpc.php";
+$lang['kanboard_url']       = "Kanboard address - ensure that jsonrpc.php is located at this address";
 $lang['kanboard_user']      = "Kanboard user for RPC calls. Standard: jsonrpc";
 $lang['kanboard_token']     = "API Token from Kanboard. Find it in Kanboard->Settings->API.";
 $lang['project_id']         = "ID of the project to be used";

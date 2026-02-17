@@ -13,11 +13,13 @@ class KanboardTask extends WikiTask
     private mixed $moPlugin;
     private string $projectId;
     private string $referencePrefix;
-    private mixed $kanboardTask = null;
+    private mixed $kanboardTask;
 
     private ?string $quickcode = null;
     private ?string $responsibleUser = null;
     private ?Periodicity $periodicity = null;
+
+    public string $DEPENDENCY_TYPE_STRING = 'Zugehörige Aufgabenbeschreibung im Praxiswiki';
 
     public function __construct(
         KanboardClient $kanboardClient,
@@ -168,9 +170,9 @@ class KanboardTask extends WikiTask
         $this->kanboardClient->createExternalTaskLink(
             strval($id),
             DOKU_URL . 'doku.php?id=' . $this->getPageId(),
-            'Zugehörige Aufgabenbeschreibung im Praxiswiki',
-            type: "attachment",
-            title: "Aufgabe: " . $this->getTitle()
+            $DEPENDENCY_TYPE_STRING,
+            "attachment",
+            "Aufgabe: " . $this->getTitle()
         );
 
         return $this->getKanboardTask();
