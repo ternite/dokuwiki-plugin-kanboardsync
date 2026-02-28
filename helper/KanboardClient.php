@@ -6,14 +6,16 @@ class KanboardClient
     private string $username;
     private string $token;
     private string $ssl_verifypeer;
+    private string $cainfo;
 
     private string $jsonrpc_php = "jsonrpc.php";
 
-    public function __construct(string $url, string $username, string $token, bool $ssl_verifypeer = true) {
+    public function __construct(string $url, string $username, string $token, bool $ssl_verifypeer = true, string $cainfo = '') {
         $this->url = $url;
         $this->username = $username;
         $this->token = $token;
         $this->ssl_verifypeer = $ssl_verifypeer;
+        $this->cainfo = $cainfo;
     }
 
     /**
@@ -35,6 +37,7 @@ class KanboardClient
             CURLOPT_CUSTOMREQUEST  => 'POST',
             CURLOPT_POSTFIELDS     => $json,
             CURLOPT_SSL_VERIFYPEER => $this->ssl_verifypeer,
+            CURLOPT_CAINFO => $this->cainfo,
             CURLOPT_HTTPHEADER     => [
                 'Content-Type: application/json',
                 'Content-Length: ' . strlen($json)

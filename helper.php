@@ -23,7 +23,8 @@ class helper_plugin_kanboardsync extends Plugin {
             $this->getConf('kanboard_url'),
             $this->getConf('kanboard_user'),
             $this->getConf('kanboard_token'),
-            $this->getConf('ssl_verifypeer')
+            $this->getConf('ssl_verifypeer'),
+            $this->getConf('cainfo')
         );
     }
 

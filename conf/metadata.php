@@ -12,3 +12,4 @@ $meta['kanboard_token']     = array('string');
 $meta['project_id']         = array('numeric','_min' => '1');
 $meta['tasktag']            = array('string');
 $meta['ssl_verifypeer']     = array('onoff');
+$meta['cainfo']             = array('string');
