@@ -65,7 +65,7 @@ class helper_plugin_kanboardsync extends Plugin {
         );
 
         // -- Prüfe, ob es bereits einen Task gibt
-        $kanboardTask = $task->getKanboardTask();
+        $kanboardTask = $task->getKanboardTaskObject();
         if ($kanboardTask) {
             $kanboardtaskurl = $this->getKanboardUrlFromTaskID($kanboardTask->id);
             $wikitaskurl = DOKU_URL . 'doku.php?id=' . $pageid;

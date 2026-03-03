@@ -13,7 +13,7 @@ class KanboardTask extends WikiTask
     private mixed $moPlugin;
     private string $projectId;
     private string $referencePrefix;
-    private mixed $kanboardTask;
+    private mixed $kanboardTaskObject = null;
 
     private ?string $quickcode = null;
     private ?string $responsibleUser = null;
@@ -43,7 +43,7 @@ class KanboardTask extends WikiTask
             fn($id) => $this->getPeriodicityFromWikipage($id)
         );
 
-        $this->kanboardTask = $this->getKanboardTask();
+        $this->kanboardTaskObject = $this->getKanboardTaskObject();
     }
 
     /**
@@ -72,9 +72,9 @@ class KanboardTask extends WikiTask
     /**
      * Ermittelt den existierenden Kanboard-Task – falls vorhanden.
      */
-    public function getKanboardTask(): ?stdClass {
+    public function getKanboardTaskObject(): ?stdClass {
 
-        if ($this->kanboardTask === null) {
+        if ($this->kanboardTaskObject === null) {
             // zuerst nach offenen Tasks suchen
             $result = $this->kanboardClient->getOpenTasksByReference(
                 (int)$this->projectId,
@@ -82,8 +82,8 @@ class KanboardTask extends WikiTask
             );
 
             if (sizeof($result) > 0) {
-                $this->kanboardTask = $result[0];
-                return $this->kanboardTask;
+                $this->kanboardTaskObject = $result[0];
+                return $this->kanboardTaskObject;
             }
 
             // wenn keine offenen Tasks gefunden wurden, dann nach Tasks mit unerreichtem Fälligkeitsdatum suchen
@@ -93,12 +93,12 @@ class KanboardTask extends WikiTask
             );
 
             if (sizeof($result) > 0) {
-                $this->kanboardTask = $result[0];
-                return $this->kanboardTask;
+                $this->kanboardTaskObject = $result[0];
+                return $this->kanboardTaskObject;
             }
         }
 
-        return $this->kanboardTask;
+        return $this->kanboardTaskObject;
     }
 
     /**
@@ -170,12 +170,12 @@ class KanboardTask extends WikiTask
         $this->kanboardClient->createExternalTaskLink(
             strval($id),
             DOKU_URL . 'doku.php?id=' . $this->getPageId(),
-            $DEPENDENCY_TYPE_STRING,
+            $this->DEPENDENCY_TYPE_STRING,
             "attachment",
             "Aufgabe: " . $this->getTitle()
         );
 
-        return $this->getKanboardTask();
+        return $this->getKanboardTaskObject();
     }
 
     /**

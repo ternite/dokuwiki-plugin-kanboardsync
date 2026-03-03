@@ -2,9 +2,11 @@
 
 class Periodicity
 {
-    public ?DateTime $referenceDate;
+    public ?DateTime $referenceDate; // Referenzdatum, von dem aus die Fälligkeit ermittelt wird. Standardmäßig das aktuelle Datum, kann aber auch explizit gesetzt werden, z.B. auf das Erstellungsdatum eines Tasks.
     public ?string $Type;           // 'wiederkehrend', 'kontinuierlich'
     public ?string $Cycle;          // 'täglich', 'wöchentlich', ...
+                                    // -> Wird zur Ermittlung des nächsten Fälligkeitsdatums eingesetzt, ausgehend vom Referenzdatum, bspw.:
+                                    //    vierteljährlich und Referenzdatum=15.03.2025 -> 1.4. (Beginn des nächsten Quartals) + $Offset
     public ?string $Offset;         // Anzahl Tage ab Cycle, zu dem das DueDate gilt
     public ?string $LoiteringTime;  // Anzahl Tage vor dem DueDate, ab wann der Task angelegt werden soll
 
@@ -56,7 +58,16 @@ class Periodicity
                 break;
 
             case 'wöchentlich':
-                // TODO: Code für wöchentliche Wiederholung
+                // Code für wöchentliche Wiederholung
+                $dueDate = $this->getWochenbeginn();
+                 // add Offset to date
+                $dueDate->modify("+$this->Offset days");
+
+                //if the reference date is already past this week plus offset, move to next week
+                if ($dueDate <= $this->referenceDate) {
+                    $dueDate->modify("+1 week");
+                }
+
                 break;
 
             case 'monatlich':
@@ -79,15 +90,63 @@ class Periodicity
                 $dueDate->modify("+$this->Offset days");
 
             case 'jährlich':
-                // TODO: Code für jährliche Wiederholung
+                $dueDate = $this->getJahresbeginn();
+                
+                // add Offset to date
+                $dueDate->modify("+$this->Offset days");
+
+                //if the reference date is already past this year plus offset, move to next year
+                if ($dueDate <= $this->referenceDate) {
+                    $dueDate->modify("+1 year");
+                }
                 break;
 
-            case 'zweijährlich':
-                // TODO: Code für jährliche Wiederholung
+            case 'zweijährlich_ab_2024':
+                
+                $dueDate = $this->getJahresbeginn();
+
+                $year = (int)$dueDate->format('Y');
+                if ($year % 2 == 0) {
+                    // Even year: due date is January 1st of the current year
+                    $dueDate = $dueDate; //nothing changes
+                } else {
+                    // Odd year: due date is January 1st of the next year
+                    $dueDate->modify("+1 years");
+                }
+                
+                // add Offset to date
+                $dueDate->modify("+$this->Offset days");
+
+                //if the reference date is already past this year plus offset, move to next cycle
+                if ($dueDate <= $this->referenceDate) {
+                    $dueDate->modify("+2 year");
+                }
+                break;
+
+            case 'zweijährlich_ab_2025':
+                
+                $dueDate = $this->getJahresbeginn();
+
+                $year = (int)$dueDate->format('Y');
+                if ($year % 2 == 0) {
+                    // Even year: due date is January 1st of the next year
+                    $dueDate->modify("+1 years");
+                } else {
+                    // Odd year: due date is January 1st of the current year
+                    $dueDate = $dueDate; //nothing changes
+                }
+                
+                // add Offset to date
+                $dueDate->modify("+$this->Offset days");
+
+                //if the reference date is already past this year plus offset, move to next cycle
+                if ($dueDate <= $this->referenceDate) {
+                    $dueDate->modify("+2 year");
+                }
                 break;
 
             default:
-                // Unbekannter Cycle
+                msg("Unknown cycle type in AUFGABE: $this->Cycle",-1);
                 return null;
         }
 
@@ -121,6 +180,23 @@ class Periodicity
         return $quarterStart;
     }
 
+    /**
+     * Ermittelt relativ zum übergebenen Datum den Zeitpunkt des betreffenden Jahresbeginns.
+     */
+    public function getJahresbeginn(): DateTime {
+        $dateTime = $this->referenceDate;
+
+        // Jahr als Zahl
+        $year = (int)$dateTime->format('Y');
+
+         // Neues DateTime-Objekt für den Jahresbeginn
+        $yearStart = new DateTime(
+            sprintf('%02d-01-01 00:00:00', $dateTime->format('Y'), $year)
+        );
+        
+        return $yearStart;
+    }
+
     public function getMonatsbeginn(): DateTime {
         $dateTime = $this->referenceDate;
 
@@ -133,6 +209,20 @@ class Periodicity
         );
 
         return $monthStart;
+    }
+
+    public function getWochenbeginn(): DateTime {
+        $dateTime = $this->referenceDate;
+
+        // Wochentag als Zahl (1 für Montag, 7 für Sonntag)
+        $weekday = (int)$dateTime->format('N');
+
+        // Berechnung des Wochenbeginns (Montag)
+        $weekStart = clone $dateTime;
+        $weekStart->modify('-' . ($weekday - 1) . ' days');
+        $weekStart->setTime(0, 0, 0);
+
+        return $weekStart;
     }
     
     public function getLoiteringDate(): ?DateTime {
