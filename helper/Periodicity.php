@@ -101,7 +101,7 @@ class Periodicity
                 }
                 break;
 
-            case 'zweijährlich_ab_2024':
+            case 'zweijährlich (gerade Jahreszahl)':
                 
                 $dueDate = $this->getJahresbeginn();
 
@@ -123,7 +123,7 @@ class Periodicity
                 }
                 break;
 
-            case 'zweijährlich_ab_2025':
+            case 'zweijährlich (ungerade Jahreszahl)':
                 
                 $dueDate = $this->getJahresbeginn();
 
@@ -147,7 +147,7 @@ class Periodicity
 
             default:
                 msg("Unknown cycle type in AUFGABE: $this->Cycle",-1);
-                return null;
+                return $this->referenceDate;
         }
 
         //strip time portion

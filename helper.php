@@ -70,7 +70,7 @@ class helper_plugin_kanboardsync extends Plugin {
             $kanboardtaskurl = $this->getKanboardUrlFromTaskID($kanboardTask->id);
             $wikitaskurl = DOKU_URL . 'doku.php?id=' . $pageid;
             $statusText = ($kanboardTask->is_active) ? "offen" : "erledigt";
-            msg("Ein  Task für <a href='$wikitaskurl'>$pagetitle</a> (" . $statusText . ") existiert bereits (Task-ID $kanboardTask->id). <a href='$kanboardtaskurl'>Task im Kanboard öffnen</a>", 0);
+            msg("Ein Task für <a href='$wikitaskurl'>$pagetitle</a> (" . $statusText . ") existiert bereits (Task-ID $kanboardTask->id). <a href='$kanboardtaskurl'>Task im Kanboard öffnen</a>", 0);
             return null;
         }
 
