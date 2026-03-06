@@ -89,6 +89,8 @@ class Periodicity
                 // add Offset to date
                 $dueDate->modify("+$this->Offset days");
 
+                break;
+
             case 'jährlich':
                 $dueDate = $this->getJahresbeginn();
                 
@@ -233,7 +235,7 @@ class Periodicity
         if (is_null($this->LoiteringTime)) {
             $loiteringDate = new DateTime("01.01.1970");
         } else {
-            $loiteringDate = $dueDate->modify("-" . $this->LoiteringTime . " days");
+            $loiteringDate = (clone $dueDate)->modify("-" . $this->LoiteringTime . " days");
         }
 
         $loiteringDate->setTime(0, 0, 0);
