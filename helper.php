@@ -74,18 +74,8 @@ class helper_plugin_kanboardsync extends Plugin {
             return null;
         }
 
-        // -- Erzeuge neuen Task
-        $kanboardTask = $task->createKanboardTask($ignoreLoitering);
-
-        if ($kanboardTask) {
-            $kanboardtaskurl = $this->getKanboardUrlFromTaskID($kanboardTask->id);
-            $wikitaskurl = DOKU_URL . 'doku.php?id=' . $pageid;
-            msg("Neuer Task für <a href='$wikitaskurl'>$pagetitle</a> erzeugt (Task-ID $kanboardTask->id). <a href='$kanboardtaskurl'>Task im Kanboard öffnen</a>", 1);
-            //expire the cache of the page
-            p_set_metadata($pageid, array('cache'=>'expire'),false,false);
-        }
-
-        return $kanboardTask;
+        // -- Erzeuge neuen Task und gebe das Task-Objekt zurück
+        return $task->createKanboardTask($ignoreLoitering);
     }
     
     public function getKanboardTask(string $pageid): WikiTask {

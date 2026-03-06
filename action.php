@@ -90,12 +90,17 @@ class action_plugin_kanboardsync extends ActionPlugin {
 
                 if (strlen($pageid) > 0) {
                     $pageTitle = p_get_metadata($pageid)['title'];
-                    $taskid = $kanboard_helper->createTaskIfNecessary($pageid, $pageTitle, true);
-                    
-                    if (is_null($taskid)) {
-                        //msg('Kanboard Task "'.$pageTitle.'" konnte nicht angelegt werden.');
+                    $kanboardTask = $kanboard_helper->createTaskIfNecessary($pageid, $pageTitle, true);
+
+                    if (is_null($kanboardTask)) {
+                        //no message needed, because the helper already provides a message in this case
+                        //msg('Kanboard Task für "'.$pageTitle.'" konnte nicht angelegt werden.');
                     } else {
-                        //msg("Kanboard Task mit ID $taskid angelegt.", 1);
+                        $kanboardtaskurl = $kanboard_helper->getKanboardUrlFromTaskID($kanboardTask->id);
+                        $wikitaskurl = DOKU_URL . 'doku.php?id=' . $pageid;
+                        msg("Neuer Task für <a href='$wikitaskurl'>$pageTitle</a> erzeugt (Task-ID $kanboardTask->id). <a href='$kanboardtaskurl'>Task im Kanboard öffnen</a>", 1);
+                        //expire the cache of the page
+                        p_set_metadata($pageid, array('cache'=>'expire'),false,false);
                     }
                 }
                 break;

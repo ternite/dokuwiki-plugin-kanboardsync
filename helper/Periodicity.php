@@ -225,20 +225,29 @@ class Periodicity
         return $weekStart;
     }
     
+    /**
+     * Ermittelt das Datum, ab dem der Task angelegt werden soll (Fälligkeitsdatum minus LoiteringTime).
+     */
     public function getLoiteringDate(): ?DateTime {
-        $dueDate = $this->getNextDueDate($this->referenceDate);
+        $dueDate = $this->getNextDueDate();
         if (is_null($this->LoiteringTime)) {
             $loiteringDate = new DateTime("01.01.1970");
         } else {
-            $loiteringDate = $dueDate->modify("-" . $this->LoiteringTime + 1 . " days");
+            $loiteringDate = $dueDate->modify("-" . $this->LoiteringTime . " days");
         }
+
+        $loiteringDate->setTime(0, 0, 0);
         
         return $loiteringDate;
     }
     
+    /**
+     * Ermittelt, ob wir uns mit dem Referenzdatum in dem Zeitraum befinden, in dem der Task angelegt werden soll.
+     * @return bool
+     */
     public function isReadyForCreation(): bool {
-        $dueDate = $this->getNextDueDate($this->referenceDate);
-        $loiteringDate = $this->getLoiteringDate($this->referenceDate);
+        $dueDate = $this->getNextDueDate();
+        $loiteringDate = $this->getLoiteringDate();
         
         //msg("LoiteringTime: ".$this->LoiteringTime." --- referenceDate: ".$this->referenceDate->format('d.m.Y h:m:s')." --- dueDate: ".$dueDate->format('d.m.Y h:m:s')." --- LoiteringDate: ".$loiteringDate->format('d.m.Y h:m:s'));
         if ($loiteringDate <= $this->referenceDate && $this->referenceDate <= $dueDate) {
