@@ -6,6 +6,8 @@
 * @author  Thomas Schäfer <thomas@hilbershome.de>
  */
 
+use dokuwiki\Extension\SyntaxPlugin;
+
 // must be run within Dokuwiki
 if (!defined('DOKU_INC')) {
     die();
@@ -14,7 +16,7 @@ if (!defined('DOKU_PLUGIN')) {
     define('DOKU_PLUGIN',DOKU_INC.'lib/plugins/');
 }
 
-class syntax_plugin_kanboardsync extends DokuWiki_Syntax_Plugin {
+class syntax_plugin_kanboardsync extends SyntaxPlugin {
     
     private $kanboarduserlink = 'KANBOARD_USERTASKS_LINK';
     private $kanboardusertasklist = 'KANBOARD_USERTASK_LIST';

@@ -10,15 +10,21 @@ class Periodicity
     public ?string $Offset;         // Anzahl Tage ab Cycle, zu dem das DueDate gilt
     public ?string $LoiteringTime;  // Anzahl Tage vor dem DueDate, ab wann der Task angelegt werden soll
 
+    private ?bool $currentTaskAlreadyCompleted; //gibt an, ob der aktuell bestehende Task bereits erledigt ist. Relevant für die Berechnung des nächsten DueDate bei kontinuierlichen Aufgaben, damit nicht einfach das nächste DueDate basierend auf dem Referenzdatum berechnet wird, sondern geprüft wird, ob das Referenzdatum bereits in der Vergangenheit liegt und der Task noch nicht erledigt ist. In diesem Fall würde das nächste DueDate in der Vergangenheit liegen, obwohl eigentlich ein neuer Task angelegt werden müsste. In diesem Fall würde dann als Referenzdatum für die Berechnung des nächsten DueDate das aktuelle Datum genommen.
+
     /**
      * Konstruktor 1: Nimmt ein Array oder einen String
      * @param array|string $input Array oder String mit Periodizitätsangaben
+     * @param DateTime|null $referenceDate Optionales Referenzdatum für die Berechnung der Fälligkeit. Standardmäßig das aktuelle Datum.
+     * @param bool|null $currentTaskAlreadyCompleted Optionaler Parameter, der angibt, ob der aktuell bestehende Task bereits erledigt ist. Relevant für die Berechnung des nächsten DueDate bei kontinuierlichen Aufgaben.
      * Beispiel 1: new Periodicity(['wiederkehrend', 'vierteljährlich', '85', '7'])
      * Beispiel 2: new Periodicity('wiederkehrend,vierteljährlich,85,7')
      * 
      */
-    public function __construct($input, ?DateTime $referenceDate = null) {
+    public function __construct($input, ?DateTime $referenceDate = null, ?bool $currentTaskAlreadyCompleted = null) {
         $this->referenceDate = $referenceDate;
+        $this->currentTaskAlreadyCompleted = $currentTaskAlreadyCompleted;
+
         if (is_null($referenceDate)) {
             $this->referenceDate = new DateTime();
         }
@@ -68,6 +74,12 @@ class Periodicity
                     $dueDate->modify("+1 week");
                 }
 
+                // if the task has already been completed in the current cycle, we want to calculate the due date for the next cycle, not the current one, even if the reference date is still before the due date of the current cycle. Otherwise, if the reference date is before the due date of the current cycle, but the task has already been completed in this cycle, we would end up with a due date in the past and no new task would be created, although actually a new task should be created because the current one is already completed.
+                if ($this->currentTaskAlreadyCompleted == true) {
+                    $dueDate->modify("+1 week");                    
+                    break;
+                }
+
                 break;
 
             case 'monatlich':
@@ -80,6 +92,13 @@ class Periodicity
                 if ($dueDate <= $this->referenceDate) {
                     $dueDate->modify("+1 month");
                 }
+
+                // if the task has already been completed in the current cycle, we want to calculate the due date for the next cycle, not the current one, even if the reference date is still before the due date of the current cycle. Otherwise, if the reference date is before the due date of the current cycle, but the task has already been completed in this cycle, we would end up with a due date in the past and no new task would be created, although actually a new task should be created because the current one is already completed.
+                if ($this->currentTaskAlreadyCompleted == true) {
+                    $dueDate->modify("month");                    
+                    break;
+                }
+
                 break;
 
             case 'vierteljährlich':
@@ -88,6 +107,12 @@ class Periodicity
                 
                 // add Offset to date
                 $dueDate->modify("+$this->Offset days");
+
+                // if the task has already been completed in the current cycle, we want to calculate the due date for the next cycle, not the current one, even if the reference date is still before the due date of the current cycle. Otherwise, if the reference date is before the due date of the current cycle, but the task has already been completed in this cycle, we would end up with a due date in the past and no new task would be created, although actually a new task should be created because the current one is already completed.
+                if ($this->currentTaskAlreadyCompleted == true) {
+                    $dueDate->modify("+3 months");                    
+                    break;
+                }
 
                 break;
 
@@ -101,6 +126,13 @@ class Periodicity
                 if ($dueDate <= $this->referenceDate) {
                     $dueDate->modify("+1 year");
                 }
+
+                // if the task has already been completed in the current cycle, we want to calculate the due date for the next cycle, not the current one, even if the reference date is still before the due date of the current cycle. Otherwise, if the reference date is before the due date of the current cycle, but the task has already been completed in this cycle, we would end up with a due date in the past and no new task would be created, although actually a new task should be created because the current one is already completed.
+                if ($this->currentTaskAlreadyCompleted == true) {
+                    $dueDate->modify("+1 year");                    
+                    break;
+                }
+
                 break;
 
             case 'zweijährlich (gerade Jahreszahl)':
@@ -121,8 +153,15 @@ class Periodicity
 
                 //if the reference date is already past this year plus offset, move to next cycle
                 if ($dueDate <= $this->referenceDate) {
-                    $dueDate->modify("+2 year");
+                    $dueDate->modify("+2 years");
                 }
+
+                // if the task has already been completed in the current cycle, we want to calculate the due date for the next cycle, not the current one, even if the reference date is still before the due date of the current cycle. Otherwise, if the reference date is before the due date of the current cycle, but the task has already been completed in this cycle, we would end up with a due date in the past and no new task would be created, although actually a new task should be created because the current one is already completed.
+                if ($this->currentTaskAlreadyCompleted == true) {
+                    $dueDate->modify("+2 years");                    
+                    break;
+                }
+
                 break;
 
             case 'zweijährlich (ungerade Jahreszahl)':
@@ -143,8 +182,15 @@ class Periodicity
 
                 //if the reference date is already past this year plus offset, move to next cycle
                 if ($dueDate <= $this->referenceDate) {
-                    $dueDate->modify("+2 year");
+                    $dueDate->modify("+2 years");
                 }
+
+                // if the task has already been completed in the current cycle, we want to calculate the due date for the next cycle, not the current one, even if the reference date is still before the due date of the current cycle. Otherwise, if the reference date is before the due date of the current cycle, but the task has already been completed in this cycle, we would end up with a due date in the past and no new task would be created, although actually a new task should be created because the current one is already completed.
+                if ($this->currentTaskAlreadyCompleted == true) {
+                    $dueDate->modify("+2 years");                    
+                    break;
+                }
+
                 break;
 
             default:
