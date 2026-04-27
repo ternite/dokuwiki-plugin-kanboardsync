@@ -101,26 +101,30 @@ class KanboardTask extends WikiTask
         return $this->kanboardTaskObject;
     }
 
+    public function getPeriodicityType(): ?string {
+        
+        return $this->periodicity ? $this->periodicity->Type : null;
+    }
+
     /**
      * Erstellt einen neuen Kanboard-Task.
      */
     public function createKanboardTask(bool $ignoreLoitering = false): ?stdClass {
-
+    
+        $title = $this->getTitle() ?? $this->getPageId();
         if (!$this->periodicity->Type || !$this->periodicity->Cycle) {
-            $title = $this->getTitle() ?? $this->getPageId();
             msg("Keine Periodizität für {$title} gefunden.", 2);
             return null;
         }
 
         if (!$this->responsibleUser) {
-            $title = $this->getTitle() ?? $this->getPageId();
             msg("Kein Verantwortlicher für '{$title}' gefunden.", 2);
             return null;
         }
 
         $user = $this->kanboardClient->getUserByName($this->responsibleUser);
         if (!$user) {
-            msg("Verantwortlicher Benutzer '{$this->responsibleUser}' existiert nicht in Kanboard.", 2);
+            msg("Verantwortlicher Benutzer '{$this->responsibleUser}' existiert nicht in Kanboard (wird für {$title} benötigt).", 2);
             return null;
         }
 
@@ -152,18 +156,18 @@ class KanboardTask extends WikiTask
                     break;
             }
             $title = $this->getTitle() ?? $this->getPageId();
-            msg("Vorlaufzeit noch nicht erreicht für <a href='$wikitaskurl'>{$title}</a> (" . $this->periodicity->Cycle . " mit " . $this->periodicity->LoiteringTime . " Tagen Vorlaufzeit zum " . $this->periodicity->Offset + 1 . ". Tag $cycle).", 2);
+            msg("Vorlaufzeit noch nicht erreicht für <a href='$wikitaskurl'>{$title}</a> (" . $this->periodicity->Cycle . " mit " . $this->periodicity->LoiteringTime . " Tagen Vorlaufzeit zum " . $this->periodicity->Offset + 1 . ". Tag $cycle).", 0);
             return null;
         }
 
-        $due = $this->kanboardClient->dateToString($this->periodicity->getNextDueDate());
+        $dueString = $this->kanboardClient->dateToString($this->periodicity->getNextDueDate());
 
         $id = $this->kanboardClient->createTask(
             $this->getTitle() ?? $this->getPageId(),
             (int)$this->projectId,
             (int)$user->id,
             $this->reference(),
-            $due
+            $dueString
         );
 
         // now add external link to wiki page

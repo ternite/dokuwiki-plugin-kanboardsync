@@ -63,19 +63,31 @@ class helper_plugin_kanboardsync extends Plugin {
             $pageid,
             $moHelper->getResponsbilityResolver()
         );
+        
+        // stop when this is not a repeating task (as per the configurated keyword)
+        if ($task->getPeriodicityType() != $this->getConf('periodicity_keyword')) {
+            return null;
+        }
 
         // -- Prüfe, ob es bereits einen Task gibt
         $kanboardTask = $task->getKanboardTaskObject();
+        $wikitaskurl = DOKU_URL . 'doku.php?id=' . $pageid;
         if ($kanboardTask) {
             $kanboardtaskurl = $this->getKanboardUrlFromTaskID($kanboardTask->id);
-            $wikitaskurl = DOKU_URL . 'doku.php?id=' . $pageid;
             $statusText = ($kanboardTask->is_active) ? "offen" : "erledigt";
             msg("Ein Task für <a href='$wikitaskurl'>$pagetitle</a> (" . $statusText . ") existiert bereits (Task-ID $kanboardTask->id). <a href='$kanboardtaskurl'>Task im Kanboard öffnen</a>", 0);
             return null;
         }
 
         // -- Erzeuge neuen Task und gebe das Task-Objekt zurück
-        return $task->createKanboardTask($ignoreLoitering);
+        $kanboardTask = $task->createKanboardTask($ignoreLoitering);
+        if (!is_null($kanboardTask)) {
+            $kanboardtaskurl = $this->getKanboardUrlFromTaskID($kanboardTask->id);
+            msg("Task <a href='$wikitaskurl'>$pagetitle</a> wurde angelegt (Task-ID $kanboardTask->id). <a href='$kanboardtaskurl'>Task im Kanboard öffnen</a>", 1);
+        } else {
+            // error reporting findet in createKanboardTask() statt
+        }
+        return $kanboardTask;
     }
     
     public function getKanboardTask(string $pageid): WikiTask {
