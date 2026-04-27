@@ -192,10 +192,15 @@ class Periodicity
                 }
 
                 break;
+            case '':
+            case null:
+                 // No cycle specified, return reference date as due date
+                $dueDate = $this->referenceDate;
+                break;
 
             default:
                 msg("Unknown cycle type in AUFGABE: $this->Cycle",-1);
-                return $this->referenceDate;
+                $dueDate = $this->referenceDate;
         }
 
         //strip time portion
