@@ -81,7 +81,7 @@ class KanboardTask extends WikiTask
                 $this->reference()
             );
 
-            if (sizeof($result) > 0) {
+            if (!is_null($result) && sizeof($result) > 0) {
                 $this->kanboardTaskObject = $result[0];
                 return $this->kanboardTaskObject;
             }
@@ -92,7 +92,7 @@ class KanboardTask extends WikiTask
                 $this->reference()
             );
 
-            if (sizeof($result) > 0) {
+            if (!is_null($result) && sizeof($result) > 0) {
                 $this->kanboardTaskObject = $result[0];
                 return $this->kanboardTaskObject;
             }
@@ -156,7 +156,8 @@ class KanboardTask extends WikiTask
                     break;
             }
             $title = $this->getTitle() ?? $this->getPageId();
-            msg("Vorlaufzeit noch nicht erreicht für <a href='$wikitaskurl'>{$title}</a> (" . $this->periodicity->Cycle . " mit " . $this->periodicity->LoiteringTime . " Tagen Vorlaufzeit zum " . $this->periodicity->Offset + 1 . ". Tag $cycle).", 0);
+			$creationDate = $this->periodicity->getLoiteringDate()->format('d.m.Y');
+            msg("Vorlaufzeit noch nicht erreicht für <a href='$wikitaskurl'>{$title}</a> (" . $this->periodicity->Cycle . " mit " . $this->periodicity->LoiteringTime . " Tagen Vorlaufzeit zum " . $this->periodicity->Offset + 1 . ". Tag $cycle -&gt; warte auf den ".$creationDate.").", 0);
             return null;
         }
 

@@ -39,6 +39,7 @@ class helper_plugin_kanboardsync extends Plugin {
         $tag = $this->getConf('tasktag');
         $taskPages = $tagHelper->getTopic('', 999, $tag);
 
+		msg("Ich hole nun alle Aufgaben mit dem Tag '".$tag."' und prüfe, ob ein Kanboard Task erstellt werden muss. Es sind ".sizeof($taskPages)." Aufgaben.", 0);
         foreach ($taskPages as $entry) {
             $this->createTaskIfNecessary($entry['id'], $entry['title'], false);
         }
