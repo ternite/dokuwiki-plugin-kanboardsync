@@ -96,7 +96,7 @@ class KanboardTask extends WikiTask
                 $this->kanboardTaskObject = $result[0];
                 
                 // special: dieser Task ist geschlossen, aber die Fälligkeit liegt in der Zukunft - das heißt, die Aufgabe wurde bereits abgeschlossen und muss als solche für die Periodicity erkennbar sein
-                $this->periodicity->currentTaskAlreadyCompleted = true;
+                $this->periodicity->setCurrentTaskAlreadyCompleted(true);
 
                 return $this->kanboardTaskObject;
             }

@@ -51,6 +51,10 @@ class Periodicity
             $this->LoiteringTime = $input[3] ?? null;
         }
     }
+	
+	public function setCurrentTaskAlreadyCompleted(bool $value) {
+		$this->currentTaskAlreadyCompleted = $value;
+	}
     
     /**
      * Ermittelt ein Fälligkeitsdatum basierend auf der Periodizität. Das beim Anlegen des Periodicity-Objekts angegebene Referenzdatum wird für die Fälligkeit als Ausgangspunkt verwendet.
