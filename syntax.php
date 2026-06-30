@@ -124,7 +124,12 @@ class syntax_plugin_kanboardsync extends SyntaxPlugin {
                 // determine last part of article id (in case of namespaced articles)
         $article_id_parts = explode(":", $article_id);
         $pagename = end($article_id_parts);
-        $pagetitle = p_get_metadata($article_id)['title'];
+        $metadata = p_get_metadata($article_id);
+        if ($metadata && isset($metadata['title'])) {
+            $pagetitle = $metadata['title'];
+        } else {
+            $pagetitle = $pagename;
+        }
 
         if ($mode == 'xhtml') {
             
